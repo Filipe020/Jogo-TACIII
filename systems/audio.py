@@ -1,9 +1,4 @@
-"""Gerenciador de áudio simples. Como o projeto ainda não tem arquivos de
-som prontos (ver assets/sounds e assets/music no GDD, seções 23-24), este
-módulo sintetiza bipes básicos via numpy para dar feedback sonoro imediato
-ao jogador (RNF10). Quando você tiver efeitos reais (Bfxr/Sfxr, Audacity),
-basta chamar `carregar_arquivo(nome, caminho)` para substituir um som
-gerado por um arquivo .wav/.ogg real."""
+"""Gerenciador de áudio. Ainda NÃO tem aúdio, deve procurar baixar e colocar """
 
 import os
 import pygame
@@ -13,7 +8,6 @@ try:
     NUMPY_OK = True
 except ImportError:
     NUMPY_OK = False
-
 
 class AudioManager:
     def __init__(self):
@@ -64,8 +58,6 @@ class AudioManager:
                 pass
 
     def carregar_arquivo(self, nome, caminho):
-        """Permite substituir um som gerado por um arquivo real em
-        assets/sounds/ ou assets/music/."""
         if not self.enabled or not os.path.exists(caminho):
             return
         try:

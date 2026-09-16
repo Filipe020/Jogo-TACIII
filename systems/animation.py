@@ -1,21 +1,7 @@
-"""Sistema de animação por spritesheet (ver GDD seção 21 - Sprites).
-
-Formato esperado de cada spritesheet: um único arquivo .png com todos os
-frames de uma ação dispostos lado a lado na horizontal, todos do mesmo
-tamanho (frame_w x frame_h). Ex.: "run.png" com 6 frames de 48x64 vira uma
-imagem de 288x64.
-
-Se o arquivo ainda não existir em disco, este sistema gera frames de
-placeholder automaticamente (um retângulo colorido com um pequeno detalhe
-que varia por frame), para que o jogo continue jogável e visualmente
-"animado" enquanto a arte real não chega. Basta soltar o .png com o nome
-certo em assets/sprites/... que ele passa a ser usado — nenhum outro
-código precisa mudar.
-"""
+"""Sistema de animação por spritesheet."""
 
 import os
 import pygame
-
 
 class SpriteSheet:
     """Carrega e fatia um spritesheet horizontal em uma lista de frames."""
@@ -53,9 +39,7 @@ class SpriteSheet:
 
     @staticmethod
     def _gerar_placeholder(frame_w, frame_h, num_frames, cor):
-        """Placeholder simples: um retângulo com um traço que se move de
-        frame a frame, só para o "estado animado" ficar visível mesmo sem
-        arte real (facilita perceber troca idle/run/attack etc.)."""
+        """Um retângulo com um traço que se move de frame a frame, só para ficar visível mesmo sem arte real"""
         frames = []
         for i in range(max(1, num_frames)):
             surf = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
@@ -69,7 +53,7 @@ class SpriteSheet:
 
 
 class Animation:
-    """Uma animação: sequência de frames + velocidade (fps) + loop ou não."""
+    """Uma animação: sequência de frames + velocidade (fps) + loop"""
 
     def __init__(self, frames, fps=10, loop=True):
         self.frames = frames if frames else [pygame.Surface((1, 1), pygame.SRCALPHA)]
@@ -81,8 +65,8 @@ class Animation:
     def reiniciar(self):
         self.tempo_acumulado = 0.0
         self.indice = 0
-        # Uma animação de 1 frame sem loop já "termina" imediatamente,
-        # senão a entidade ficaria presa nela para sempre.
+        #Uma animação de 1 frame sem loop já "termina" imediatamente,
+        #senão a entidade ficaria presa nela para sempre.
         self.terminou = len(self.frames) <= 1 and not self.loop
 
     def atualizar(self, dt):
@@ -105,13 +89,9 @@ class Animation:
 
 
 class AnimationController:
-    """Gerencia várias Animations de uma entidade e a troca entre estados
-    ('idle', 'run', 'attack_sword', ...), com espelhamento horizontal
-    conforme a direção que a entidade está olhando (facing)."""
+    """Gerencia várias Animations de uma entidade e a troca entre estados ('idle', 'run', 'attack_sword', ...),"""
 
     def __init__(self, definicoes, pasta_base, cor_placeholder=(200, 60, 200)):
-        """`definicoes`: dict {nome_estado: dict(file, frame_w, frame_h,
-        frames, fps, loop)} — ver config/animations.py."""
         self.animacoes = {}
         for nome, info in definicoes.items():
             caminho = os.path.join(pasta_base, info["file"])

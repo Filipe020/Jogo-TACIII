@@ -1,4 +1,4 @@
-"""Espada: alto dano, alcance curto, ataque rápido (GDD seção 8.1)."""
+"""Espada: alto dano, alcance curto, ataque rápido."""
 
 import pygame
 
@@ -15,8 +15,7 @@ class Sword(Weapon):
         return calculate_damage(self.dano_base, multiplicador)
 
     def hitbox(self, player):
-        """Retângulo de ataque na frente do jogador, conforme a direção
-        que ele está olhando."""
+        """Retângulo de ataque na frente do jogador, conforme a direção que ele está olhando."""
         if player.facing > 0:
             x = player.rect.right
         else:

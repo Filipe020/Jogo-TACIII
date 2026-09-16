@@ -1,8 +1,4 @@
-"""Sistema de progressão: contador de inimigos derrotados e melhorias
-permanentes obtidas na Sala de Evolução (ver GDD seções 13, 14 e 15).
-
-Não há moedas — o "inimigos derrotados" da Run vira diretamente o
-"ponto" gasto na Sala de Evolução, como descrito no GDD."""
+"""Sistema de progressão: contador de inimigos derrotados e melhorias permanentes obtidas na Sala de Evolução"""
 
 import json
 import os
@@ -56,28 +52,27 @@ UPGRADE_DEFS = {
 
 
 class Progression:
-    """Gerencia o progresso persistente entre Runs (RF13, RF14)."""
+    """Gerencia o progresso persistente entre Runs"""
 
     def __init__(self):
-        self.pontos_disponiveis = 0          # inimigos derrotados ainda não gastos
-        self.total_inimigos_derrotados = 0   # histórico total (estatística)
-        self.melhor_run = 0                  # recorde de inimigos derrotados em uma run
+        self.pontos_disponiveis = 0          #inimigos derrotados ainda não gastos
+        self.total_inimigos_derrotados = 0   #histórico total (estatística)
+        self.melhor_run = 0                  #recorde de inimigos derrotados em uma run
         self.niveis = {chave: 0 for chave in UPGRADE_DEFS}
         self.carregar()
 
-    # --- Run atual ---
+    #---Run atual---
     def registrar_kill_run(self, run_state):
         run_state.inimigos_derrotados += 1
 
     def encerrar_run(self, run_state):
-        """Chamado quando o jogador morre: converte o progresso da Run em
-        pontos disponíveis na Sala de Evolução (GDD seção 17)."""
+        """Chamado quando o jogador morre: converte o progresso da Run em pontos disponíveis na Sala de Evolução"""
         self.pontos_disponiveis += run_state.inimigos_derrotados
         self.total_inimigos_derrotados += run_state.inimigos_derrotados
         self.melhor_run = max(self.melhor_run, run_state.inimigos_derrotados)
         self.salvar()
 
-    # --- Melhorias ---
+    #---Melhorias---
     def custo_proximo_nivel(self, chave):
         info = UPGRADE_DEFS[chave]
         nivel = self.niveis[chave]
@@ -98,7 +93,7 @@ class Progression:
         self.salvar()
         return True
 
-    # --- Multiplicadores/bônus aplicados ao Player ---
+    #---Multiplicadores/bônus aplicados ao Player---
     def bonus_vida_maxima(self):
         return self.niveis["vida_maxima"] * 20
 
@@ -118,7 +113,7 @@ class Progression:
         # Quanto menor, mais rápido o cooldown entre ataques.
         return max(0.4, 1.0 - self.niveis["velocidade_ataque"] * 0.06)
 
-    # --- Persistência (savegame.json na raiz do projeto) ---
+    #---Persistência (savegame.json na raiz do projeto)---
     def salvar(self):
         dados = {
             "pontos_disponiveis": self.pontos_disponiveis,

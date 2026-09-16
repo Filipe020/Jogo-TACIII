@@ -1,9 +1,7 @@
-"""Shuriken: ataque à distância, dano menor que a espada, quantidade
-controlada pelo sistema do jogo (GDD seção 8.2)."""
+"""Shuriken: ataque à distância, dano menor que a espada, quantidade limite."""
 
 from weapons.weapon import Weapon
 from systems.combat import calculate_damage
-
 
 class ShurikenWeapon(Weapon):
     def __init__(self, dano_base=9, cooldown=0.45):

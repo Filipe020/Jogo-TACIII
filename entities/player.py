@@ -1,4 +1,4 @@
-"""Personagem principal — o ninja controlado pelo jogador (GDD seção 7)."""
+"""Personagem principal"""
 
 import os
 
@@ -12,7 +12,6 @@ from systems import physics, collision, combat
 from systems.animation import AnimationController
 from config import settings
 from config.animations import PLAYER_ANIMATIONS, PLAYER_FRAME_SIZE
-
 
 class Player(Entity):
     WIDTH = 28
@@ -45,17 +44,17 @@ class Player(Entity):
 
         self.morto = False
 
-        # --- Animação (GDD seção 21) ---
+        #---Animação---
         self.anim = AnimationController(
             PLAYER_ANIMATIONS,
             pasta_base=os.path.join(settings.BASE_DIR, "assets", "sprites", "player"),
             cor_placeholder=settings.COLOR_PLAYER,
         )
         self.anim.trocar_estado("idle")
-        self.anim_acao_timer = 0.0   # duração restante de uma animação de ação (ataque/dano)
+        self.anim_acao_timer = 0.0   #duração restante de uma animação de ação (ataque/dano)
         self.anim_acao_nome = None   # 'attack_sword' | 'attack_shuriken' | 'hurt'
 
-    # --- Entrada (GDD seção 4) ---
+    #---Entrada---
     def handle_input(self, keys, audio):
         move = 0
         if keys[pygame.K_a]:
@@ -71,14 +70,17 @@ class Player(Entity):
             self.on_ground = False
             audio.play("jump")
 
-        if keys[pygame.K_j] and self.sword.pode_atacar():
+        botoes_mouse = pygame.mouse.get_pressed()
+        botao_esquerdo = botoes_mouse[0]
+        botao_direito = botoes_mouse[2]
+
+        if botao_esquerdo and self.sword.pode_atacar():
             self._atacar_espada()
             audio.play("sword")
 
-        if keys[pygame.K_k] and self.shuriken_weapon.pode_atacar() and self.shurikens > 0:
+        if botao_direito and self.shuriken_weapon.pode_atacar() and self.shurikens > 0:
             self._lancar_shuriken()
             audio.play("shuriken")
-
     def _atacar_espada(self):
         self.sword.resetar_cooldown()
         self.ataque_visual_timer = 0.12
@@ -102,7 +104,7 @@ class Player(Entity):
     def _dano_espada(self):
         return combat.calculate_damage(self.sword.dano_base, self.mult_dano_espada)
 
-    # --- Atualização ---
+    #---Atualização---
     def update(self, dt, platforms, level_bounds):
         self.sword.atualizar(dt)
         self.shuriken_weapon.atualizar(dt)
@@ -118,12 +120,12 @@ class Player(Entity):
                 self.shuriken_regen_timer = 0.0
                 self.shurikens += 1
 
-        # Movimento horizontal: x = x0 + v * dt
+        #Movimento horizontal
         self.x = physics.integrate_position(self.x, self.vx, dt)
         collision.resolve_horizontal(self, platforms)
         collision.clamp_to_bounds(self, level_bounds[0], level_bounds[1])
 
-        # Movimento vertical: gravidade + y = y0 + vy * dt
+        #Movimento vertical
         self.vy = physics.apply_gravity(self.vy, dt)
         self.y = physics.integrate_position(self.y, self.vy, dt)
         collision.resolve_vertical(self, platforms)
@@ -172,7 +174,7 @@ class Player(Entity):
             return self.sword.hitbox(self)
         return None
 
-    # --- Desenho ---
+    #---Desenho---
     def draw(self, surface, camera_x):
         if self.invulneravel_timer > 0 and int(self.invulneravel_timer * 20) % 2 == 0:
             for proj in self.projectiles:

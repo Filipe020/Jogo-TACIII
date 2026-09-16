@@ -1,5 +1,4 @@
-"""Controla o estado geral do jogo: menu, Run, pausa, morte e Sala de
-Evolução (ver GDD seções 12, 14, 16, 17 e 31)."""
+"""Controla o estado geral do jogo: menu, Run, pausa, morte e Sala de Evolução"""
 
 import pygame
 
@@ -14,7 +13,6 @@ from ui.hud import HUD
 from ui.evolution_menu import EvolutionMenu
 from ui.game_over import GameOverScreen
 from config import settings
-
 
 class GameManager:
     def __init__(self, screen):
@@ -37,7 +35,7 @@ class GameManager:
 
         self.game_over_timer = 0.0
 
-    # --- Transições de estado (GDD seção 16 - Ciclo de Progressão) ---
+    #---Transições de estado---
     def iniciar_run(self):
         self.run_state.reiniciar()
         self.level_manager.reiniciar()
@@ -56,7 +54,7 @@ class GameManager:
         self.evolution_menu.atualizar_opcoes()
         self.state = GameState.SALA_EVOLUCAO
 
-    # --- Eventos ---
+    #---Eventos---
     def handle_event(self, event):
         if event.type != pygame.KEYDOWN:
             return
@@ -77,7 +75,7 @@ class GameManager:
                 self.evolution_menu.confirmar_iniciar_run = False
                 self.iniciar_run()
 
-    # --- Atualização ---
+    #---Atualização---
     def update(self, dt):
         keys = pygame.key.get_pressed()
 
@@ -104,10 +102,10 @@ class GameManager:
             inimigo.atualizar_ia(dt, self.player, self.level_manager.plataformas, self.level_manager.limites)
 
         self._resolver_combate()
-        # Mantém o inimigo na cena até a animação de morte terminar de tocar.
+        #Mantém o inimigo na cena até a animação de morte terminar de tocar.
         self.enemies = [e for e in self.enemies if not e.animacao_morte_terminou()]
 
-        # Câmera segue o jogador horizontalmente (com suavização)
+        #Câmera segue o jogador horizontalmente
         alvo_camera = self.player.rect.centerx - settings.SCREEN_WIDTH // 2
         alvo_camera = max(
             self.level_manager.limites[0],
@@ -119,7 +117,7 @@ class GameManager:
             self.encerrar_run()
 
     def _resolver_combate(self):
-        # Espada do jogador x inimigos
+        #Espada do jogador x inimigos
         hitbox = self.player.sword_hitbox()
         if hitbox:
             atingidos = check_attack_hit(hitbox, self.enemies)
@@ -130,7 +128,7 @@ class GameManager:
                 if not inimigo.alive:
                     self.progression.registrar_kill_run(self.run_state)
 
-        # Shurikens do jogador x inimigos
+        #Shurikens do jogador x inimigos
         for proj in self.player.projectiles:
             if not proj.alive:
                 continue
@@ -142,14 +140,14 @@ class GameManager:
                         self.progression.registrar_kill_run(self.run_state)
                     break
 
-        # Projéteis de inimigos à distância x jogador
+        #Projéteis de inimigos à distância x jogador
         for inimigo in self.enemies:
             for proj in inimigo.projectiles:
                 if proj.alive and proj.rect.colliderect(self.player.rect):
                     self.player.receber_dano(proj.damage, self.audio)
                     proj.alive = False
 
-    # --- Desenho ---
+    #---Desenho---
     def draw(self):
         if self.state == GameState.MENU:
             self.main_menu.draw(self.screen)

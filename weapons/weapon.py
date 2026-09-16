@@ -1,4 +1,4 @@
-"""Classe base para as armas do jogador (ver GDD seções 8 e 30)."""
+"""Classe base para as armas do jogador."""
 
 
 class Weapon:
@@ -6,7 +6,7 @@ class Weapon:
         self.dano_base = dano_base
         self.alcance = alcance
         self.cooldown = cooldown
-        self.tempo_desde_ultimo_ataque = cooldown  # já pode atacar de início
+        self.tempo_desde_ultimo_ataque = cooldown  #já pode atacar de início
 
     def pode_atacar(self):
         return self.tempo_desde_ultimo_ataque >= self.cooldown

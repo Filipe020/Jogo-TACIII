@@ -30,7 +30,7 @@ class MainMenu:
         linhas = [
             "ENTER — Iniciar",
             "A / D — Mover      W / ESPAÇO — Pular",
-            "J — Espada      K — Shuriken      ESC — Pausar",
+            "Clique esquerdo — Espada      Clique direito — Shuriken      ESC — Pausar",
         ]
         y = 340
         for linha in linhas:

@@ -1,13 +1,9 @@
-"""Colisões via Bounding Boxes retangulares (ver GDD seção 6).
-Resolve eixo horizontal e vertical separadamente para simplificar a
-plataforma: Jogador/Inimigo x Plataforma, Ataque/Shuriken x Inimigo."""
+"""Colisões via Bounding Boxes retangularespara simplificar a plataforma: Jogador/Inimigo x Plataforma, Ataque/Shuriken x Inimigo."""
 
 import pygame
 
-
 def rects_collide(a: pygame.Rect, b: pygame.Rect) -> bool:
     return a.colliderect(b)
-
 
 def resolve_horizontal(entity, platforms):
     """Impede que a entidade atravesse plataformas horizontalmente."""
@@ -37,12 +33,6 @@ def resolve_vertical(entity, platforms):
                 entity.vy = 0
             rect = entity.rect
 
-    # "Snap" ao chão: a cada frame a gravidade acelera vy um pouco (mesmo
-    # com o personagem parado), então no frame seguinte ao pouso o
-    # deslocamento pode ser pequeno demais para o rect ainda se sobrepor
-    # à plataforma (bordas apenas encostando não contam como colisão em
-    # colliderect). Sem isso, on_ground fica alternando True/False a cada
-    # frame e a animação "pisca" entre idle e queda mesmo parado.
     TOLERANCIA_SNAP = 6
     if not entity.on_ground and entity.vy >= 0:
         for plat in platforms:
@@ -55,16 +45,13 @@ def resolve_vertical(entity, platforms):
                 entity.on_ground = True
                 break
 
-
 def check_attack_hit(attack_rect, targets):
-    """Retorna a lista de alvos atingidos por um retângulo de ataque
-    (Ataque x Inimigo / Shuriken x Inimigo)."""
+    """Retorna a lista de alvos atingidos por um retângulo de ataque"""
     hits = []
     for t in targets:
         if getattr(t, "alive", True) and attack_rect.colliderect(t.rect):
             hits.append(t)
     return hits
-
 
 def clamp_to_bounds(entity, min_x, max_x):
     """Impede que a entidade saia dos limites do nível."""

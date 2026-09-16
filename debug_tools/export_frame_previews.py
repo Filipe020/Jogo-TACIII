@@ -1,17 +1,8 @@
-"""Ferramenta de debug: corta um spritesheet exatamente como o jogo faria
-e salva cada frame como um .png separado, pra você conferir visualmente se
+"""Ferramenta de debug: Para conferir visualmente se
 o corte (frame_w x frame_h x quantidade de frames) está certo.
 
 Uso:
     python debug_tools/export_frame_previews.py <caminho_do_png> <frame_w> <frame_h> <num_frames>
-
-Exemplo:
-    python debug_tools/export_frame_previews.py assets/sprites/player/run.png 48 64 6
-
-Isso cria uma pasta "frame_preview_run/" (ou "frame_preview_<nome_do_arquivo>/")
-com um arquivo frame_0.png, frame_1.png, etc. Abra cada um e confira se mostra
-exatamente uma pose completa do personagem, sem cortar/misturar com a pose
-vizinha.
 """
 
 import os

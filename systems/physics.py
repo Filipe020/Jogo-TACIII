@@ -1,5 +1,4 @@
-"""Funções de física básica: movimento horizontal, gravidade e salto
-(ver GDD seção 5 - Física e Movimentação)."""
+"""Funções de física básica: movimento horizontal, gravidade e salto"""
 
 from config import settings
 

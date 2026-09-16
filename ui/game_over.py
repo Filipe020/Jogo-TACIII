@@ -1,5 +1,4 @@
-"""Overlay breve exibido no momento da morte, antes de ir para a Sala de
-Evolução (ver GDD seção 17 - Sistema de Morte)."""
+"""Overlay breve exibido no momento da morte, antes de ir para a Sala de Evolução"""
 
 import pygame
 

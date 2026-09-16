@@ -1,11 +1,9 @@
-"""Gerencia o nível atual: plataformas, limites e o spawner de inimigos
-durante a Run (ver GDD seção 12 - Sistema de Run)."""
+"""Gerencia o nível atual: plataformas, limites e o spawner de inimigos durante a Run"""
 
 import random
 
 from levels import level_01
 from entities.enemy import Enemy
-
 
 class LevelManager:
     def __init__(self):
@@ -21,7 +19,7 @@ class LevelManager:
         self.intervalo_spawn = 2.6
 
     def _tipo_aleatorio(self, tempo_de_run):
-        # Quanto mais tempo de Run, maior a chance de inimigos mais difíceis.
+        #Quanto mais tempo de Run, maior a chance de inimigos mais difíceis.
         pesos = {
             "basico": 5,
             "rapido": 3,
@@ -34,7 +32,7 @@ class LevelManager:
     def atualizar_spawner(self, dt, tempo_de_run, player_x, inimigos_atuais):
         self.tempo_desde_spawn += dt
 
-        # A cada 20s de Run, o spawn fica um pouco mais frequente (mín. 0.9s).
+        #A cada 20s de Run, o spawn fica um pouco mais frequente (mín. 0.9s).
         self.intervalo_spawn = max(0.9, 2.6 - (tempo_de_run // 20) * 0.15)
 
         if self.tempo_desde_spawn >= self.intervalo_spawn and len(inimigos_atuais) < 10:

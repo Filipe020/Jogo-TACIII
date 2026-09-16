@@ -1,8 +1,6 @@
-"""Classe base para objetos com posição, tamanho e retângulo de colisão
-(GDD seção 30 - Principais Classes)."""
+"""Classe base para objetos com posição, tamanho e retângulo de colisão"""
 
 import pygame
-
 
 class Entity:
     def __init__(self, x, y, width, height):

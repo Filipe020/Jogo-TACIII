@@ -1,5 +1,4 @@
-"""Cálculos de combate e vida (ver GDD seções 8 e 9)."""
-
+"""Cálculos de combate e vida"""
 
 def calculate_damage(base_damage, multiplier=1.0):
     """Dano = DanoBase * MultiplicadorDeAtaque"""

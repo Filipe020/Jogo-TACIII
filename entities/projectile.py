@@ -1,11 +1,10 @@
 """Representa um shuriken em voo — do jogador ou de um inimigo à
-distância (GDD seções 8.2 e 10)."""
+distância"""
 
 import pygame
 
 from entities.entity import Entity
 from config import settings
-
 
 class Projectile(Entity):
     def __init__(self, x, y, direction, speed, damage, from_player=True):
@@ -14,7 +13,7 @@ class Projectile(Entity):
         self.damage = damage
         self.from_player = from_player
         self.facing = direction
-        self.lifetime = 2.0  # segundos até desaparecer sozinho
+        self.lifetime = 2.0  #Segundos até desaparecer sozinho
         self.rotation = 0
 
     def update(self, dt):

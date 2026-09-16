@@ -1,22 +1,25 @@
-"""Configurações globais do Shadow Rebirth (ver GDD seções 3, 4 e 5)."""
+"""Configurações globais do Shadow Rebirth"""
 
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# --- Janela ---
+#---Janela---
+
+'''Deixar no projeto final em FullScream'''
+
 SCREEN_WIDTH = 960
 SCREEN_HEIGHT = 540
 FPS = 60
 TITLE = "Shadow Rebirth"
 
-# --- Física---
-GRAVITY = 1800.0          # g, em px/s^2
-MAX_FALL_SPEED = 1200.0   # velocidade máxima de queda, em px/s
-MOVE_SPEED = 260.0        # v, velocidade horizontal base do jogador, em px/s
-JUMP_POWER = 620.0        # Vp, velocidade inicial do salto, em px/s
+#---Física---
+GRAVITY = 1800.0          #Gravidade
+MAX_FALL_SPEED = 1200.0   #Velocidade da queda
+MOVE_SPEED = 260.0        #Velocidade do Personagem
+JUMP_POWER = 620.0        #Velocidade do Salto
 
-# --- Paleta de cores (pixel art simplificada com formas geométricas) ---
+#---Paleta de cores---
 COLOR_BG = (18, 14, 28)
 COLOR_BG_FAR = (30, 24, 44)
 COLOR_PLATFORM = (72, 54, 46)
@@ -37,13 +40,13 @@ ENEMY_COLORS = {
     "distancia": (90, 170, 110),
 }
 
-# --- Controles---
-# A / D          -> mover
-# W ou ESPAÇO    -> pular
-# J              -> espada
-# K              -> shuriken
-# ESC            -> pausar
-# ENTER          -> confirmar
+#---Controles---
+# A / D              -> mover
+# W ou ESPAÇO        -> pular
+# Clique esquerdo    -> espada
+# Clique direito     -> shuriken
+# ESC                -> pausar / abrir menu
+# Enter              -> confirmar seleção
 
-# --- Save ---
+#---Save---
 SAVE_FILE = os.path.join(BASE_DIR, "savegame.json")

@@ -1,11 +1,9 @@
-"""Tela da Sala de Evolução — o jogador gasta os pontos obtidos na Run
-para comprar melhorias permanentes (ver GDD seções 14 e 15)."""
+"""Tela da Sala de Evolução — o jogador gasta os pontos obtidos na Run para comprar melhorias permanentes"""
 
 import pygame
 
 from config import settings
 from systems.progression import UPGRADE_DEFS
-
 
 class EvolutionMenu:
     def __init__(self, progression):

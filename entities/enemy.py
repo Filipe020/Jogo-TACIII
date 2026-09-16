@@ -1,4 +1,4 @@
-"""Inimigos: básico, rápido, resistente e à distância (GDD seção 10)."""
+"""Inimigos: básico, rápido, resistente e à distância"""
 
 import os
 import random
@@ -38,7 +38,7 @@ class Enemy(Entity):
         self.ataque_timer = random.uniform(0, self.ataque_cooldown)
         self.projectiles = []
 
-        # --- Animação (GDD seção 21) ---
+        #---Animação---
         info_anim = ENEMY_ANIMATIONS[tipo]
         self.frame_size = (info_anim["idle"]["frame_w"], info_anim["idle"]["frame_h"])
         self.anim = AnimationController(
@@ -52,8 +52,8 @@ class Enemy(Entity):
 
     def atualizar_ia(self, dt, player, platforms, level_bounds):
         if not self.alive:
-            # Inimigo já morreu: só termina de tocar a animação de morte
-            # e deixa os projéteis que ainda estejam no ar continuarem.
+            #Inimigo já morreu: só termina de tocar a animação de morte
+            #e deixa os projéteis que ainda estejam no ar continuarem.
             self.anim.trocar_estado("death")
             self.anim.atualizar(dt)
             for proj in self.projectiles:
@@ -86,7 +86,7 @@ class Enemy(Entity):
                 self.ataque_timer = 0
                 self.anim_ataque_timer = 0.25
 
-        # Física (mesmas fórmulas do GDD seção 5)
+        # Física
         self.x = physics.integrate_position(self.x, self.vx, dt)
         collision.resolve_horizontal(self, platforms)
         collision.clamp_to_bounds(self, level_bounds[0], level_bounds[1])

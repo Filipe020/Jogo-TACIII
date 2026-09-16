@@ -1,11 +1,4 @@
-"""Carregador de ícones estáticos do HUD — vida, arma, pontos (GDD seção 18).
-
-Diferente de systems/animation.py (que corta spritesheets com vários
-frames), aqui cada ícone é uma única imagem PNG estática. Se o arquivo
-ainda não existir, gera um placeholder simples (uma forma geométrica) pra
-o HUD continuar legível enquanto a arte real não chega — basta soltar o
-.png com o nome certo em assets/sprites/ui/ que ele passa a ser usado
-automaticamente."""
+"""Carregador de ícones estáticos do HUD — vida, arma, pontos (GDD seção 18)."""
 
 import math
 import os

@@ -1,12 +1,9 @@
-"""Nível inicial — templo em ruínas com plataformas em diferentes alturas
-(ver GDD seção 19 - Cenário Inicial). O nível é bem longo horizontalmente
-para dar espaço ao ciclo de exploração + combate da Run."""
+"""Nível inicial — templo em ruínas com plataformas em diferentes alturas."""
 
 from levels.rooms import plataforma, gerar_chao
 
 LARGURA_NIVEL = 3600
 CHAO_Y = 460
-
 
 def construir_plataformas():
     return [

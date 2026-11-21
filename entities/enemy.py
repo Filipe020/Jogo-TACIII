@@ -2,6 +2,7 @@
 
 import os
 import random
+from itertools import count
 
 import pygame
 
@@ -25,9 +26,11 @@ TIPOS = {
 
 
 class Enemy(Entity):
+    _ids = count(1)
     def __init__(self, x, y, tipo="basico"):
         info = TIPOS[tipo]
         super().__init__(x, y, info["width"], info["height"])
+        self.uid = next(self._ids)
         self.tipo = tipo
         self.max_health = info["health"]
         self.health = self.max_health
@@ -37,6 +40,10 @@ class Enemy(Entity):
         self.ataque_cooldown = 1.1
         self.ataque_timer = random.uniform(0, self.ataque_cooldown)
         self.projectiles = []
+        self.jump_cooldown = 0.0
+        self.jump_target_x = None
+        # Impulso maior que o do ninja para perseguir em plataformas altas.
+        self.jump_power = {"rapido": 850, "resistente": 850, "basico": 870, "distancia": 820}[tipo]
 
         #---Animação---
         info_anim = ENEMY_ANIMATIONS[tipo]
@@ -50,10 +57,52 @@ class Enemy(Entity):
         self.anim_ataque_timer = 0.0
         self.anim_hurt_timer = 0.0
 
+    def _objetivo_plataforma(self, player, platforms):
+        """Define degrau, local de decolagem (fora da parede) e pouso.
+
+        As plataformas são sólidas: saltar por baixo causaria colisão no teto.
+        """
+        meus_pes = self.rect.bottom
+        alvo_x, alvo_y = player.rect.centerx, player.rect.bottom
+        max_subida = self.jump_power ** 2 / (2 * settings.GRAVITY) - 12
+        candidatas = []
+        for plat in platforms:
+            subida = meus_pes - plat.top
+            if not (20 < subida <= max_subida):
+                continue
+            # Aproximação em uma das duas bordas, sem entrar sob a plataforma.
+            offset = self.width / 2 + 10
+            pontos = (
+                (plat.left - offset, plat.left + min(28, plat.width / 3)),
+                (plat.right + offset, plat.right - min(28, plat.width / 3)),
+            )
+            for decolagem, pouso in pontos:
+                distancia = abs(decolagem - self.rect.centerx)
+                if distancia > 250:
+                    continue
+                if not (0 <= decolagem <= 12000):
+                    continue
+                # Preferir plataformas próximas da posição/altura do alvo.
+                score = (abs(pouso - alvo_x) * 0.65 + abs(plat.top - alvo_y) * 1.1
+                         + distancia * 0.28)
+                candidatas.append((score, decolagem, pouso))
+        return min(candidatas)[1:] if candidatas else None
+
+    def _precisa_pular(self, player, platforms):
+        if not self.on_ground or self.jump_cooldown > 0:
+            return False
+        meus_pes = self.rect.bottom
+        # A plataforma do jogador precisa ser alcançável a partir da posição atual.
+        # Um obstáculo à frente impede o deslocamento horizontal.
+        if self.vx:
+            frente = self.rect.move(12 if self.vx > 0 else -12, -6)
+            for plat in platforms:
+                if frente.colliderect(plat) and plat.top < meus_pes - 10:
+                    return True
+        return False
+
     def atualizar_ia(self, dt, player, platforms, level_bounds):
         if not self.alive:
-            #Inimigo já morreu: só termina de tocar a animação de morte
-            #e deixa os projéteis que ainda estejam no ar continuarem.
             self.anim.trocar_estado("death")
             self.anim.atualizar(dt)
             for proj in self.projectiles:
@@ -61,10 +110,26 @@ class Enemy(Entity):
             self.projectiles = [p for p in self.projectiles if p.alive]
             return
 
+        self.jump_cooldown = max(0, self.jump_cooldown - dt)
         dist_x = player.rect.centerx - self.rect.centerx
-        self.facing = 1 if dist_x > 0 else -1
+        self.facing = 1 if dist_x >= 0 else -1
+        meu_objetivo = None
+        if player.rect.bottom < self.rect.bottom - 25 and self.on_ground:
+            meu_objetivo = self._objetivo_plataforma(player, platforms)
 
-        if self.tipo == "distancia":
+        if not self.on_ground and self.jump_target_x is not None:
+            delta = self.jump_target_x - self.rect.centerx
+            self.vx = (1 if delta > 0 else -1) * self.speed if abs(delta) > 7 else 0
+        elif meu_objetivo:
+            decolagem_x, pouso_x = meu_objetivo
+            diferenca = decolagem_x - self.rect.centerx
+            self.vx = (1 if diferenca > 0 else -1) * self.speed if abs(diferenca) > 7 else 0
+            if self.on_ground and self.jump_cooldown == 0 and abs(diferenca) < 12:
+                self.vy = -self.jump_power
+                self.on_ground = False
+                self.jump_cooldown = 0.65
+                self.jump_target_x = pouso_x
+        elif self.tipo == "distancia":
             distancia_ideal = 260
             if abs(dist_x) < distancia_ideal - 20:
                 self.vx = -self.facing * self.speed
@@ -75,9 +140,14 @@ class Enemy(Entity):
         else:
             self.vx = self.facing * self.speed if abs(dist_x) > 4 else 0
 
+        if not meu_objetivo and self.jump_target_x is None and self._precisa_pular(player, platforms):
+            self.vy = -self.jump_power
+            self.on_ground = False
+            self.jump_cooldown = 0.65
+
         self.ataque_timer += dt
         if self.tipo == "distancia":
-            if self.ataque_timer >= self.ataque_cooldown and abs(dist_x) < 420:
+            if self.ataque_timer >= self.ataque_cooldown and abs(dist_x) < 420 and abs(player.rect.centery - self.rect.centery) < 75:
                 self._atirar()
                 self.ataque_timer = 0
         else:
@@ -86,7 +156,6 @@ class Enemy(Entity):
                 self.ataque_timer = 0
                 self.anim_ataque_timer = 0.25
 
-        # Física
         self.x = physics.integrate_position(self.x, self.vx, dt)
         collision.resolve_horizontal(self, platforms)
         collision.clamp_to_bounds(self, level_bounds[0], level_bounds[1])
@@ -94,11 +163,12 @@ class Enemy(Entity):
         self.vy = physics.apply_gravity(self.vy, dt)
         self.y = physics.integrate_position(self.y, self.vy, dt)
         collision.resolve_vertical(self, platforms)
+        if self.on_ground:
+            self.jump_target_x = None
 
         for proj in self.projectiles:
             proj.update(dt)
         self.projectiles = [p for p in self.projectiles if p.alive]
-
         self._atualizar_animacao(dt)
 
     def _atualizar_animacao(self, dt):

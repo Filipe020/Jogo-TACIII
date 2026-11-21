@@ -31,7 +31,7 @@ python main.py
 | W / Espaço          | Pular                          |
 | Clique esquerdo     | Atacar com espada              |
 | Clique direito      | Lançar shuriken                |
-| ESC                 | Pausar / voltar                |
+| ESC                 | Abrir/fechar o menu de pausa   |
 | Enter               | Confirmar / comprar melhoria   |
 #------------------------------------------------------|
 ## Editor de fases — integrado ao jogo
@@ -57,7 +57,7 @@ sem mudar os arquivos `.py`.
 | `Ctrl+Z` / `Ctrl+Y` | Desfazer/refazer alterações |
 | `N` | Criar mapa novo (mantém apenas chão e início do jogador) |
 | `F5` | Testar a fase **mesmo sem salvar** |
-| `ESC` durante o teste | Voltar ao editor, sem registrar pontos de evolução |
+| `ESC` durante o teste | Abrir pausa (opção **Voltar ao Editor**), sem registrar pontos de evolução |
 | `ESC` no editor | Voltar ao menu, depois de salvar alterações |
 
 ### Onde ficam os mapas?
@@ -80,3 +80,34 @@ funcione como roguelite. Os inimigos que você posicionar também aparecerão no
 
 O cenário noturno `assets/backgrounds/templo_noite.png` acompanha o editor e o
 jogo. Caso não seja encontrado, o jogo usa o fundo roxo simples original.
+
+## Novidades — IA dos inimigos e multiplayer LAN
+
+- **Inimigos podem saltar** e usar a borda das plataformas para chegar ao jogador em locais elevados. No modo cooperativo, perseguem o ninja vivo mais próximo.
+- **Multiplayer LAN (2 jogadores):** menu `Multiplayer > Criar sala` no anfitrião; no outro computador, `Multiplayer > Entrar na sala` com o IP local dele. Usa TCP **porta 5050**. O host controla a física e envia o estado aos clientes.
+- **Botão Voltar** nas telas de Configurações e Multiplayer (ESC também retorna).
+- **Editor de fases:** mantido, com teste `F5` e salvamento `Ctrl+S`.
+
+Consulte o [Guia de Multiplayer LAN](GUIA_MULTIPLAYER_LAN.md) para instruções no Windows, firewall, testes e limitações.
+
+### Executar testes
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+O teste de rede usa TCP local, e o teste de IA requer Pygame instalado.
+
+## Menu de pausa (ESC)
+
+Durante uma partida, pressione **ESC** para abrir o menu de pausa. É possível
+escolher as opções pelo mouse ou por **↑ / ↓ e Enter**:
+
+- **Continuar** — volta à partida (ou aperte ESC novamente).
+- **Voltar ao menu** — encerra a partida atual e retorna ao menu principal.
+- **Voltar ao editor** — aparece apenas no teste de fase iniciado com F5.
+
+**Atenção:** voltar ao menu abandona a run atual; não equivale a salvar a partida.
+Na **LAN**, abrir a pausa interrompe apenas os *controles locais*. A partida
+continua acontecendo no computador anfitrião, para não interromper o outro
+jogador. Ao escolher **Voltar ao menu**, a conexão LAN é encerrada.

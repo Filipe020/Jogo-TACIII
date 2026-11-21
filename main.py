@@ -1,4 +1,5 @@
-"""Ponto de entrada do Shadow Rebirth — jogo de plataforma 2D Run and Gun / Roguelite"""
+"""Ponto de entrada do Shadow Rebirth — jogo de plataforma 2D Run and Gun
+/ Roguelite (ver GDD completo)."""
 
 import sys
 
@@ -6,6 +7,7 @@ import pygame
 
 from config import settings
 from game.game_manager import GameManager
+
 
 def main():
     pygame.init()

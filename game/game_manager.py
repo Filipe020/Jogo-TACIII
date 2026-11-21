@@ -12,9 +12,6 @@ from ui.main_menu import MainMenu
 from ui.hud import HUD
 from ui.evolution_menu import EvolutionMenu
 from ui.game_over import GameOverScreen
-from ui.level_editor import LevelEditor
-from systems.background import TempleBackground
-from levels.level_data import carregar_slot, mapa_padrao
 from config import settings
 
 class GameManager:
@@ -31,10 +28,6 @@ class GameManager:
         self.enemies = []
         self.camera_x = 0.0
 
-        self.background = TempleBackground()
-        self.editor = LevelEditor(self.background)
-        self.em_teste = False
-
         self.main_menu = MainMenu()
         self.hud = HUD()
         self.evolution_menu = EvolutionMenu(self.progression)
@@ -43,20 +36,13 @@ class GameManager:
         self.game_over_timer = 0.0
 
     #---Transições de estado---
-    def iniciar_run(self, mapa=None, teste=False):
-        """ENTER usa o slot salvo; F5 usa inclusive alterações ainda não salvas."""
-        if mapa is None:
-            try:
-                mapa = carregar_slot(self.editor.slot) or mapa_padrao()
-            except (ValueError, OSError, KeyError, TypeError):
-                mapa = mapa_padrao()
-        self.level_manager.carregar_mapa(mapa)
+    def iniciar_run(self):
         self.run_state.reiniciar()
+        self.level_manager.reiniciar()
         spawn_x, spawn_y = self.level_manager.spawn_jogador
         self.player = Player(spawn_x, spawn_y, self.progression)
-        self.enemies = self.level_manager.criar_inimigos_iniciais()
+        self.enemies = []
         self.camera_x = 0.0
-        self.em_teste = teste
         self.state = GameState.RUN
 
     def encerrar_run(self):
@@ -70,12 +56,16 @@ class GameManager:
 
     #---Eventos---
     def handle_event(self, event):
-        if self.state == GameState.EDITOR:
-            acao = self.editor.handle_event(event)
-            if acao == "menu":
-                self.state = GameState.MENU
-            elif acao == "testar":
-                self.iniciar_run(mapa=self.editor.mapa, teste=True)
+        if self.state == GameState.MENU:
+            tem_save = __import__("os").path.exists(settings.SAVE_FILE)
+            acao = self.main_menu.handle_event(event, tem_save)
+            if acao == "novo_jogo":
+                self.progression.resetar()
+                self.iniciar_run()
+                self.audio.play("menu")
+            elif acao == "continuar":
+                self.iniciar_run()
+                self.audio.play("menu")
             return
 
         if event.type != pygame.KEYDOWN:
@@ -83,23 +73,11 @@ class GameManager:
 
         if event.key == pygame.K_ESCAPE:
             if self.state == GameState.RUN:
-                if self.em_teste:
-                    self.state = GameState.EDITOR
-                    self.editor.informar("Teste encerrado. Ajuste sua fase ou Ctrl+S para salvar.")
-                    return
                 self.state = GameState.PAUSADO
             elif self.state == GameState.PAUSADO:
                 self.state = GameState.RUN
 
-        if self.state == GameState.MENU and event.key == pygame.K_e:
-            self.state = GameState.EDITOR
-            self.editor.informar("Bem-vindo ao editor. F5 testa a fase atual.")
-
-        elif self.state == GameState.MENU and event.key == pygame.K_RETURN:
-            self.iniciar_run()
-            self.audio.play("menu")
-
-        elif self.state == GameState.SALA_EVOLUCAO:
+        if self.state == GameState.SALA_EVOLUCAO:
             self.evolution_menu.handle_event(event, self.audio)
             if self.evolution_menu.confirmar_iniciar_run:
                 self.evolution_menu.confirmar_iniciar_run = False
@@ -109,10 +87,10 @@ class GameManager:
     def update(self, dt):
         keys = pygame.key.get_pressed()
 
-        if self.state == GameState.RUN:
+        if self.state == GameState.MENU:
+            self.main_menu.update(dt)
+        elif self.state == GameState.RUN:
             self._atualizar_run(dt, keys)
-        elif self.state == GameState.EDITOR:
-            self.editor.update(dt)
         elif self.state == GameState.GAME_OVER:
             self.game_over_timer -= dt
             if self.game_over_timer <= 0:
@@ -146,11 +124,7 @@ class GameManager:
         self.camera_x += (alvo_camera - self.camera_x) * min(1, dt * 6)
 
         if self.player.morto:
-            if self.em_teste:
-                self.state = GameState.EDITOR
-                self.editor.informar("Jogador morreu no teste. F5 para tentar novamente.")
-            else:
-                self.encerrar_run()
+            self.encerrar_run()
 
     def _resolver_combate(self):
         #Espada do jogador x inimigos
@@ -186,9 +160,7 @@ class GameManager:
     #---Desenho---
     def draw(self):
         if self.state == GameState.MENU:
-            self.main_menu.draw(self.screen)
-        elif self.state == GameState.EDITOR:
-            self.editor.draw(self.screen)
+            self.main_menu.draw(self.screen, __import__("os").path.exists(settings.SAVE_FILE))
         elif self.state in (GameState.RUN, GameState.PAUSADO):
             self._desenhar_run()
             if self.state == GameState.PAUSADO:
@@ -200,7 +172,7 @@ class GameManager:
             self.evolution_menu.draw(self.screen, self.progression, self.run_state)
 
     def _desenhar_run(self):
-        self.background.draw(self.screen, self.camera_x)
+        self._desenhar_fundo_combate()
         cam = int(self.camera_x)
 
         for plat in self.level_manager.plataformas:
@@ -214,12 +186,25 @@ class GameManager:
 
         self.player.draw(self.screen, cam)
         self.hud.draw(self.screen, self.player, self.run_state)
-        if self.em_teste:
-            fonte = pygame.font.SysFont("consolas", 16, bold=True)
-            tag = fonte.render("MODO TESTE - ESC para voltar ao editor", True, (240, 230, 255))
-            caixa = pygame.Rect(12, settings.SCREEN_HEIGHT - 32, tag.get_width() + 20, 26)
-            pygame.draw.rect(self.screen, (48, 31, 75), caixa, border_radius=5)
-            self.screen.blit(tag, (caixa.x + 10, caixa.y + 4))
+
+    def _desenhar_fundo_combate(self):
+        """Desenha o cenário com parallax suave em relação à câmera do nível."""
+        try:
+            if not hasattr(self, "background_combate"):
+                imagem = pygame.image.load(settings.COMBAT_BACKGROUND).convert()
+                self.background_combate = pygame.transform.smoothscale(
+                    imagem, (settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT)
+                )
+            largura = self.background_combate.get_width()
+            deslocamento = int(self.camera_x * 0.22) % largura
+            self.screen.blit(self.background_combate, (-deslocamento, 0))
+            self.screen.blit(self.background_combate, (largura - deslocamento, 0))
+            # Escurece levemente a arte para destacar sprites e HUD.
+            overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((8, 7, 24, 65))
+            self.screen.blit(overlay, (0, 0))
+        except (pygame.error, OSError):
+            self.screen.fill(settings.COLOR_BG)
 
     def _desenhar_pausa(self):
         overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)

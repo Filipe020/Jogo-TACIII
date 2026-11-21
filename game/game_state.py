@@ -4,7 +4,6 @@ from enum import Enum, auto
 
 class GameState(Enum):
     MENU = auto()
-    EDITOR = auto()
     RUN = auto()
     PAUSADO = auto()
     SALA_EVOLUCAO = auto()

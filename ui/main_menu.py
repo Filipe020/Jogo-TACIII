@@ -28,12 +28,13 @@ class MainMenu:
         surface.blit(subtitulo, subtitulo.get_rect(center=(settings.SCREEN_WIDTH // 2, 230)))
 
         linhas = [
-            "ENTER — Iniciar",
+            "ENTER — Jogar fase salva",
+            "E — Abrir Editor de Fases",
             "A / D — Mover      W / ESPAÇO — Pular",
             "Clique esquerdo — Espada      Clique direito — Shuriken      ESC — Pausar",
         ]
-        y = 340
+        y = 308
         for linha in linhas:
             texto = self.fonte_texto.render(linha, True, settings.COLOR_TEXT)
             surface.blit(texto, texto.get_rect(center=(settings.SCREEN_WIDTH // 2, y)))
-            y += 34
+            y += 36

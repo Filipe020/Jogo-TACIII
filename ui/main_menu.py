@@ -50,8 +50,7 @@ class MainMenu:
                         self.avisar("Multiplayer: funcionalidade em desenvolvimento.")
                         return None
                     if nome == "Editor de Fases":
-                        self.avisar("O módulo do editor não está presente neste arquivo ZIP.")
-                        return None
+                        return "editor"
                     return "novo_jogo" if nome == "Novo Jogo" else "continuar"
         return None
 

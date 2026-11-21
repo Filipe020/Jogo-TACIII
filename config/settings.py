@@ -51,6 +51,6 @@ ENEMY_COLORS = {
 #---Save---
 SAVE_FILE = os.path.join(BASE_DIR, "savegame.json")
 
-#---Fundos---
+#---Fundos do menu e combate---
 MENU_BACKGROUND = os.path.join(BASE_DIR, "assets", "sprites", "backgrounds", "menu_background.png")
 COMBAT_BACKGROUND = os.path.join(BASE_DIR, "assets", "sprites", "backgrounds", "combat_background.png")

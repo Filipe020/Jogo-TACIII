@@ -61,18 +61,6 @@ class Progression:
         self.niveis = {chave: 0 for chave in UPGRADE_DEFS}
         self.carregar()
 
-    def resetar(self):
-        """Reinicia o progresso para começar uma campanha do zero."""
-        self.pontos_disponiveis = 0
-        self.total_inimigos_derrotados = 0
-        self.melhor_run = 0
-        self.niveis = {chave: 0 for chave in UPGRADE_DEFS}
-        try:
-            if os.path.exists(settings.SAVE_FILE):
-                os.remove(settings.SAVE_FILE)
-        except OSError:
-            pass
-
     #---Run atual---
     def registrar_kill_run(self, run_state):
         run_state.inimigos_derrotados += 1

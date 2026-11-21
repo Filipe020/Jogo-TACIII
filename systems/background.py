@@ -8,7 +8,11 @@ from config import settings
 
 class TempleBackground:
     def __init__(self):
-        caminho = os.path.join(settings.BASE_DIR, "assets", "backgrounds", "templo_noite.png")
+        caminho = getattr(
+            settings,
+            "COMBAT_BACKGROUND",
+            os.path.join(settings.BASE_DIR, "assets", "backgrounds", "templo_noite.png"),
+        )
         self.imagem = None
         if os.path.exists(caminho):
             try:

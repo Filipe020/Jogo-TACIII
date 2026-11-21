@@ -88,6 +88,8 @@ class LevelEditor:
         }
         self.width_minus = pygame.Rect(651, 9, 29, 32)
         self.width_plus = pygame.Rect(689, 9, 29, 32)
+        # Visível no cabeçalho, à direita: volta ao menu principal.
+        self.back_button = pygame.Rect(PANEL_X + 10, 9, 194, 33)
 
     def informar(self, text, seconds=4):
         self.notice = text
@@ -327,6 +329,14 @@ class LevelEditor:
         self._limitar_camera()
         self.informar(f"Largura do mapa: {nova}px")
 
+    def _voltar_ao_menu(self):
+        """Pede confirmação antes de descartar alterações não salvas."""
+        if self._precisa_confirmacao("menu"):
+            return None
+        self.dragging = None
+        self.platform_start = None
+        return "menu"
+
     def executar_acao(self, acao):
         if acao == "salvar":
             self.salvar()
@@ -350,10 +360,7 @@ class LevelEditor:
             elif ctrl and event.key == pygame.K_y:
                 self.refazer()
             elif event.key == pygame.K_ESCAPE:
-                if self.dirty:
-                    self.informar("Salve com Ctrl+S antes de voltar ao menu.")
-                else:
-                    return "menu"
+                return self._voltar_ao_menu()
             elif event.key == pygame.K_F5:
                 return "testar"
             elif event.key in (pygame.K_F1, pygame.K_F2, pygame.K_F3):
@@ -379,6 +386,8 @@ class LevelEditor:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             pos = event.pos
             if event.button == 1:
+                if self.back_button.collidepoint(pos):
+                    return self._voltar_ao_menu()
                 for slot, rect in self.slots_buttons.items():
                     if rect.collidepoint(pos):
                         self.mudar_slot(slot)
@@ -547,6 +556,7 @@ class LevelEditor:
             self._rounded_button(screen, rect, f"F{slot}  Fase {slot}", slot == self.slot)
         self._rounded_button(screen, self.width_minus, "-")
         self._rounded_button(screen, self.width_plus, "+")
+        self._rounded_button(screen, self.back_button, "< VOLTAR AO MENU", accent=True)
 
         pygame.draw.rect(screen, (27, 24, 43), (PANEL_X, TOP_H, 214, settings.SCREEN_HEIGHT - TOP_H))
         self._texto(screen, "FERRAMENTAS", PANEL_X + 14, 65, (226, 181, 249), self.font_bold)
@@ -559,7 +569,7 @@ class LevelEditor:
         self._rounded_button(screen, self.action_buttons["carregar"], "Ctrl+O Abrir")
         self._rounded_button(screen, self.action_buttons["testar"], "F5  TESTAR A FASE", accent=True)
         self._rounded_button(screen, self.action_buttons["novo"], "N  Nova fase")
-        self._texto(screen, "ESC: menu | G: grade", PANEL_X + 14, 483,
+        self._texto(screen, "ESC: voltar | G: grade", PANEL_X + 14, 483,
                     (186, 175, 202), self.font_small)
 
         pygame.draw.rect(screen, (22, 19, 36), (0, BOTTOM_Y, settings.SCREEN_WIDTH,

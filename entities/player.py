@@ -40,6 +40,7 @@ class Player(Entity):
 
         self.invulneravel_timer = 0.0
         self.ataque_visual_timer = 0.0
+        self.atingidos_espada = set()
         self.projectiles = []
 
         self.morto = False
@@ -56,32 +57,41 @@ class Player(Entity):
 
     #---Entrada---
     def handle_input(self, keys, audio):
-        move = 0
-        if keys[pygame.K_a]:
-            move -= 1
-        if keys[pygame.K_d]:
-            move += 1
+        """Lê comandos do computador local (modo solo ou anfitrião LAN)."""
+        botoes = pygame.mouse.get_pressed()
+        self.handle_actions({
+            "left": bool(keys[pygame.K_a]),
+            "right": bool(keys[pygame.K_d]),
+            "jump": bool(keys[pygame.K_w] or keys[pygame.K_SPACE]),
+            "sword": bool(botoes[0]),
+            "shuriken": bool(botoes[2]),
+        }, audio)
+
+    def handle_actions(self, actions, audio):
+        """Os mesmos comandos para jogadores locais e vindos da LAN."""
+        if self.morto:
+            self.vx = 0
+            return
+        move = int(bool(actions.get("right"))) - int(bool(actions.get("left")))
         self.vx = move * self.speed
-        if move != 0:
+        if move:
             self.facing = 1 if move > 0 else -1
 
-        if (keys[pygame.K_w] or keys[pygame.K_SPACE]) and self.on_ground:
+        if actions.get("jump") and self.on_ground:
             self.vy = physics.apply_jump()
             self.on_ground = False
             audio.play("jump")
 
-        botoes_mouse = pygame.mouse.get_pressed()
-        botao_esquerdo = botoes_mouse[0]
-        botao_direito = botoes_mouse[2]
-
-        if botao_esquerdo and self.sword.pode_atacar():
+        if actions.get("sword") and self.sword.pode_atacar():
             self._atacar_espada()
             audio.play("sword")
 
-        if botao_direito and self.shuriken_weapon.pode_atacar() and self.shurikens > 0:
+        if actions.get("shuriken") and self.shuriken_weapon.pode_atacar() and self.shurikens > 0:
             self._lancar_shuriken()
             audio.play("shuriken")
+
     def _atacar_espada(self):
+        self.atingidos_espada.clear()  # cada inimigo recebe somente um dano por golpe
         self.sword.resetar_cooldown()
         self.ataque_visual_timer = 0.12
         self.anim_acao_timer = 0.2

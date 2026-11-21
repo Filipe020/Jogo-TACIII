@@ -32,6 +32,8 @@ def main():
         gerenciador.draw()
         pygame.display.flip()
 
+    if gerenciador.lan is not None:
+        gerenciador.lan.close()
     pygame.quit()
     sys.exit()
 

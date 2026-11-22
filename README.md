@@ -5,8 +5,11 @@ Primeiro protótipo jogável de **Shadow Rebirth**, um jogo de plataforma 2D com
 
 Você controla um ninja que explora um cenário, combate inimigos com espada e
 shuriken, e acumula um contador de inimigos derrotados durante cada **Run**.
-Ao morrer, esse progresso vira pontos gastáveis na **Sala de Evolução**, onde
-você compra melhorias permanentes antes de iniciar a próxima Run.
+Cada inimigo derrotado rende **1 ponto de habilidade imediatamente**. Use o botão
+**Habilidades [H]** na partida para comprar melhorias de vida, armas e velocidade.
+Os pontos restantes também podem ser gastos na **Sala de Evolução** após morrer.
+**Novo Jogo sempre zera as habilidades e os pontos**; **Continuar** retoma a progressão
+salva. Na LAN e no teste do editor, a evolução é temporária e não altera o save solo.
 
 ## Instalação
 
@@ -32,6 +35,7 @@ python main.py
 | Clique esquerdo     | Atacar com espada              |
 | Clique direito      | Lançar shuriken                |
 | ESC                 | Abrir/fechar o menu de pausa   |
+| H ou botão HABILIDADES | Abrir/fechar evolução durante a partida |
 | Enter               | Confirmar / comprar melhoria   |
 #------------------------------------------------------|
 ## Editor de fases — integrado ao jogo
@@ -69,7 +73,7 @@ Os mapas são salvos automaticamente com os nomes:
 - `levels/custom_level_03.json`
 
 O programa cria esses arquivos ao pressionar **Ctrl+S**. Para jogar uma fase salva
-fora do editor, selecione seu slot no editor, volte ao menu com **ESC** e use **ENTER**.
+fora do editor, selecione seu slot no editor, volte ao menu e escolha **Continuar** (que usa a fase salva).
 
 **Diferença entre testar e jogar:** durante o teste iniciado com F5, você pode usar
 uma versão ainda não salva do mapa, mas mortes e derrotas não mudam os pontos
@@ -111,3 +115,26 @@ escolher as opções pelo mouse ou por **↑ / ↓ e Enter**:
 Na **LAN**, abrir a pausa interrompe apenas os *controles locais*. A partida
 continua acontecendo no computador anfitrião, para não interromper o outro
 jogador. Ao escolher **Voltar ao menu**, a conexão LAN é encerrada.
+
+## Novidades — melhorias durante a partida e botão Sair
+
+- **Sair do Jogo:** botão no menu principal, com encerramento normal da janela e da conexão de rede.
+- **Habilidades [H]:** novo botão no canto superior direito da partida. `H` abre/fecha o painel; `↑/↓` e `Enter` ou clique compram uma melhoria. `Esc` também fecha o painel.
+- **Moeda:** cada inimigo derrotado rende **1 ponto** na hora. Os pontos são descontados ao melhorar uma habilidade. A morte **não concede esses mesmos pontos novamente**.
+- **Bônus instantâneos:** vida máxima, velocidade, dano, limite de shurikens e velocidade de ataque são atualizados no personagem durante a partida, sem reiniciá-la.
+- **Novo Jogo:** zera níveis, pontos, total de eliminações e recorde da progressão salva; começa com atributos básicos. **Atenção: sobrescreve o progresso anterior.**
+- **Continuar:** utiliza os níveis e os pontos salvos anteriormente para iniciar uma nova run.
+- **LAN cooperativa:** o servidor gerencia um conjunto de níveis e pontos *compartilhado pelos dois jogadores*. O cliente pode solicitar compras, validadas pelo servidor. Abrir o painel pausa somente os comandos locais; o outro jogador continua em movimento.
+- **Editor (`F5`):** melhorias feitas em testes de fase não ficam salvas no perfil do jogo.
+- **Sala de Evolução:** continua acessível após uma derrota; as compras feitas lá também persistem até selecionar Novo Jogo.
+
+### Como testar
+
+```bash
+python -m unittest discover -s tests -v
+python main.py
+```
+
+No menu principal clique em **Novo Jogo**, derrote inimigos e use `H` para evoluir.
+Volte ao menu e clique em **Novo Jogo** para conferir o reinício dos níveis. A opção
+**Continuar** preserva o estado salvo.

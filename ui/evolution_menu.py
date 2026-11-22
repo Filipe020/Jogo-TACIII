@@ -1,4 +1,4 @@
-"""Tela da Sala de Evolução — o jogador gasta os pontos obtidos na Run para comprar melhorias permanentes"""
+"""Sala de Evolução: compra de habilidades com pontos restantes entre runs."""
 
 import pygame
 
@@ -50,7 +50,7 @@ class EvolutionMenu:
         surface.blit(titulo, titulo.get_rect(center=(settings.SCREEN_WIDTH // 2, 55)))
 
         pontos = self.fonte_texto.render(
-            f"Inimigos derrotados disponíveis: {progression.pontos_disponiveis}",
+            f"Pontos de habilidade disponíveis: {progression.pontos_disponiveis}",
             True, settings.COLOR_TEXT,
         )
         surface.blit(pontos, pontos.get_rect(center=(settings.SCREEN_WIDTH // 2, 92)))

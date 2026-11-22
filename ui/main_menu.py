@@ -64,6 +64,8 @@ class MainMenu:
                     if nome == "Entrar na sala":
                         return "lan_join:" + self.ip_servidor.strip()
                     return None
+                if nome == "Sair do Jogo":
+                    return "sair"
                 if nome == "Configurações":
                     self.tela = "configuracoes"
                     return None
@@ -112,12 +114,12 @@ class MainMenu:
         if self.tela == "configuracoes":
             titulo = self.fonte_titulo.render("CONFIGURAÇÕES", True, (246, 220, 255))
             surface.blit(titulo, titulo.get_rect(center=(480, 112)))
-            linhas = ["CONTROLES", "A / D  -  Movimentar", "W / ESPAÇO  -  Pular", "Botão esquerdo  -  Espada", "Botão direito  -  Shuriken"]
+            linhas = ["CONTROLES", "A / D  -  Movimentar", "W / ESPAÇO  -  Pular", "Botão esquerdo  -  Espada", "Botão direito  -  Shuriken", "H - Habilidades durante a partida"]
             for i, linha in enumerate(linhas):
                 fonte = self.fonte_botao if i == 0 else self.fonte_subtitulo
                 texto = fonte.render(linha, True, (245, 235, 255))
-                surface.blit(texto, texto.get_rect(center=(480, 186 + i * 40)))
-            self._desenhar_botao(surface, "Voltar", 453)
+                surface.blit(texto, texto.get_rect(center=(480, 180 + i * 35)))
+            self._desenhar_botao(surface, "Voltar", 458)
             return
 
         if self.tela == "multiplayer":
@@ -143,11 +145,12 @@ class MainMenu:
         subtitulo = self.fonte_subtitulo.render("UM NINJA. UMA LÂMINA. RUNS INFINITAS.", True, (235, 220, 255))
         surface.blit(subtitulo, subtitulo.get_rect(center=(480, 151)))
 
-        self._desenhar_botao(surface, "Novo Jogo", 230)
-        self._desenhar_botao(surface, "Continuar", 280, tem_save)
-        self._desenhar_botao(surface, "Multiplayer", 330)
-        self._desenhar_botao(surface, "Editor de Fases", 380)
-        self._desenhar_botao(surface, "Configurações", 430)
+        self._desenhar_botao(surface, "Novo Jogo", 208)
+        self._desenhar_botao(surface, "Continuar", 256, tem_save)
+        self._desenhar_botao(surface, "Multiplayer", 304)
+        self._desenhar_botao(surface, "Editor de Fases", 352)
+        self._desenhar_botao(surface, "Configurações", 400)
+        self._desenhar_botao(surface, "Sair do Jogo", 448)
         self._desenhar_mensagem(surface)
 
     def _desenhar_mensagem(self, surface):

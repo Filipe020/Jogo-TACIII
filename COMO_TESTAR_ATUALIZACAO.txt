@@ -1,0 +1,34 @@
+SHADOW REBIRTH - ATUALIZACAO DO MENU E DAS HABILIDADES
+
+1. MENU PRINCIPAL
+   - Botao 'Sair do Jogo': fecha a aplicacao normalmente.
+
+2. DENTRO DA PARTIDA
+   - Use o botao 'HABILIDADES [H]' no canto superior direito ou pressione H.
+   - Selecione uma habilidade com o mouse ou setas (cima/baixo).
+   - Clique em EVOLUIR ou aperte Enter para comprar.
+   - Feche com H, Esc ou X.
+   - Cada inimigo derrotado rende 1 ponto imediatamente, acumulando no saldo.
+   - Os niveis sao aplicados ao personagem sem reiniciar a partida.
+   - A Sala de Evolucao apos a morte permanece acessivel.
+
+3. NOVO JOGO X CONTINUAR
+   - NOVO JOGO: zera todas as habilidades, pontos e estatisticas no save.
+     ATENCAO: sobrescreve o progresso que estava salvo.
+   - CONTINUAR: carrega os niveis e pontos que ja estavam salvos.
+   - Testes F5 do editor e partidas LAN nao sobrescrevem o save solo.
+   - Em LAN, pontos e niveis sao compartilhados. O host valida as compras.
+
+4. INSTALACAO NO PROJETO QUE JA ESTA NO GITHUB
+   - Nao apague sua pasta .git.
+   - Faça copia de seguranca da pasta do projeto ou crie um commit antes.
+   - Extraia a VERSAO_PATCH dentro da pasta original do Jogo-TACIII.
+   - Confirme a substituicao dos arquivos modificados.
+   - Execute: python main.py
+   - Para testes: python -m unittest discover -s tests -v
+
+5. ENVIAR PARA O GITHUB
+   git status
+   git add .
+   git commit -m "feat: adiciona sair e upgrades durante a partida"
+   git push origin developer/guilherme

@@ -45,6 +45,7 @@ ENEMY_COLORS = {
 # W ou ESPAÇO        -> pular
 # Clique esquerdo    -> espada
 # Clique direito     -> shuriken
+# H                  -> habilidades durante a partida
 # ESC                -> pausar / abrir menu
 # Enter              -> confirmar seleção
 

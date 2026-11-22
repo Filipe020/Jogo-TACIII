@@ -28,7 +28,8 @@ O jogo agora tem **multiplayer cooperativo para 2 pessoas**, via **TCP** na **me
 - `A / D`: mover à esquerda e à direita.
 - `W / Espaço`: pular.
 - Clique esquerdo: espada; clique direito: shuriken.
-- `Esc`: desconectar e voltar ao menu (inclusive durante a partida LAN).
+- `Esc`: abrir o menu de pausa; escolha **Voltar ao menu** para desconectar (no lobby, Esc cancela).
+- `H` ou o botão **Habilidades**: abrir a evolução durante a partida; Esc ou H fecha o painel.
 - O botão **Voltar** na tela de Configurações e Multiplayer retorna ao menu principal.
 
 ## Regras e observações
@@ -36,7 +37,8 @@ O jogo agora tem **multiplayer cooperativo para 2 pessoas**, via **TCP** na **me
 - Os jogadores estão no **mesmo mapa**, combatendo os mesmos inimigos. Cada um tem vida, movimento, espada e shurikens independentes.
 - Mobs tentam alcançar o jogador mais próximo, inclusive com saltos sobre plataformas.
 - A câmera de cada computador acompanha o próprio ninja. O servidor sincroniza vida, posições, inimigos, projéteis e pontuação compartilhada.
-- A sala é encerrada quando **ambos** morrem, um jogador sai, ou ocorre desconexão. No multiplayer não são concedidos pontos para a Sala de Evolução; a progressão offline não é sobrescrita.
+- Na LAN, cada inimigo derrotado rende 1 ponto para o **saldo compartilhado**; o anfitrião valida compras de habilidades, que beneficiam os dois ninjas. As habilidades e pontos LAN são temporários e não sobrescrevem a evolução offline.
+- A sala é encerrada quando **ambos** morrem, um jogador sai, ou ocorre desconexão. O multiplayer não transfere os pontos para a Sala de Evolução offline.
 - O modo LAN foi desenvolvido para partidas locais cooperativas simples, **não** tem salas públicas, reconexão automática, autenticação, matchmaking nem interpolação avançada de movimento.
 
 ## Se não conseguir conectar

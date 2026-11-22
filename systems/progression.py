@@ -1,4 +1,8 @@
-"""Sistema de progressão: contador de inimigos derrotados e melhorias permanentes obtidas na Sala de Evolução"""
+"""Pontos por inimigo derrotado e habilidades para a partida atual.
+
+Os níveis e pontos podem ser retomados por 'Continuar', mas 'Novo Jogo'
+zera a progressão. Testes do editor e partidas LAN usam progresso temporário.
+"""
 
 import json
 import os
@@ -36,7 +40,7 @@ UPGRADE_DEFS = {
     },
     "qtd_shurikens": {
         "nome": "Quantidade de shurikens",
-        "descricao": "+1 shuriken inicial",
+        "descricao": "+1 shuriken inicial e no máximo",
         "custo_base": 20,
         "custo_incremento": 8,
         "max_nivel": 6,
@@ -52,27 +56,39 @@ UPGRADE_DEFS = {
 
 
 class Progression:
-    """Gerencia o progresso persistente entre Runs"""
+    """Gerencia pontos, compras e eventual persistência de progresso."""
 
-    def __init__(self):
-        self.pontos_disponiveis = 0          #inimigos derrotados ainda não gastos
-        self.total_inimigos_derrotados = 0   #histórico total (estatística)
-        self.melhor_run = 0                  #recorde de inimigos derrotados em uma run
+    def __init__(self, carregar=True, persistir=True):
+        self.persistir = persistir
+        self.pontos_disponiveis = 0
+        self.total_inimigos_derrotados = 0
+        self.melhor_run = 0
         self.niveis = {chave: 0 for chave in UPGRADE_DEFS}
-        self.carregar()
+        if carregar:
+            self.carregar()
 
-    #---Run atual---
+    def reiniciar_novo_jogo(self):
+        """'Novo Jogo' sempre começa do zero, independentemente do save antigo."""
+        self.pontos_disponiveis = 0
+        self.total_inimigos_derrotados = 0
+        self.melhor_run = 0
+        self.niveis = {chave: 0 for chave in UPGRADE_DEFS}
+        self.salvar()
+
+    # ---Run atual---
     def registrar_kill_run(self, run_state):
+        """Cada inimigo rende um ponto imediatamente utilizável durante a run."""
         run_state.inimigos_derrotados += 1
+        self.pontos_disponiveis += 1
+        self.salvar()
 
     def encerrar_run(self, run_state):
-        """Chamado quando o jogador morre: converte o progresso da Run em pontos disponíveis na Sala de Evolução"""
-        self.pontos_disponiveis += run_state.inimigos_derrotados
+        """Registra estatísticas, sem creditar novamente os pontos já recebidos."""
         self.total_inimigos_derrotados += run_state.inimigos_derrotados
         self.melhor_run = max(self.melhor_run, run_state.inimigos_derrotados)
         self.salvar()
 
-    #---Melhorias---
+    # ---Melhorias---
     def custo_proximo_nivel(self, chave):
         info = UPGRADE_DEFS[chave]
         nivel = self.niveis[chave]
@@ -93,7 +109,24 @@ class Progression:
         self.salvar()
         return True
 
-    #---Multiplicadores/bônus aplicados ao Player---
+    def receber_estado_remoto(self, dados):
+        """Atualização da LAN: apenas o servidor pode gastar pontos."""
+        if not isinstance(dados, dict):
+            return
+        pontos = dados.get("points")
+        niveis = dados.get("levels")
+        if isinstance(pontos, int) and pontos >= 0:
+            self.pontos_disponiveis = pontos
+        if isinstance(niveis, dict):
+            for chave, info in UPGRADE_DEFS.items():
+                valor = niveis.get(chave)
+                if type(valor) is int and 0 <= valor <= info["max_nivel"]:
+                    self.niveis[chave] = valor
+
+    def estado_rede(self):
+        return {"points": self.pontos_disponiveis, "levels": dict(self.niveis)}
+
+    # ---Multiplicadores/bônus aplicados ao Player---
     def bonus_vida_maxima(self):
         return self.niveis["vida_maxima"] * 20
 
@@ -110,11 +143,12 @@ class Progression:
         return self.niveis["qtd_shurikens"]
 
     def multiplicador_velocidade_ataque(self):
-        # Quanto menor, mais rápido o cooldown entre ataques.
         return max(0.4, 1.0 - self.niveis["velocidade_ataque"] * 0.06)
 
-    #---Persistência (savegame.json na raiz do projeto)---
+    # ---Persistência---
     def salvar(self):
+        if not self.persistir:
+            return
         dados = {
             "pontos_disponiveis": self.pontos_disponiveis,
             "total_inimigos_derrotados": self.total_inimigos_derrotados,
@@ -133,11 +167,11 @@ class Progression:
         try:
             with open(settings.SAVE_FILE, "r", encoding="utf-8") as f:
                 dados = json.load(f)
-            self.pontos_disponiveis = dados.get("pontos_disponiveis", 0)
-            self.total_inimigos_derrotados = dados.get("total_inimigos_derrotados", 0)
-            self.melhor_run = dados.get("melhor_run", 0)
+            self.pontos_disponiveis = max(0, int(dados.get("pontos_disponiveis", 0)))
+            self.total_inimigos_derrotados = max(0, int(dados.get("total_inimigos_derrotados", 0)))
+            self.melhor_run = max(0, int(dados.get("melhor_run", 0)))
             niveis = dados.get("niveis", {})
-            for chave in UPGRADE_DEFS:
-                self.niveis[chave] = niveis.get(chave, 0)
-        except (OSError, json.JSONDecodeError):
+            for chave, info in UPGRADE_DEFS.items():
+                self.niveis[chave] = max(0, min(info["max_nivel"], int(niveis.get(chave, 0))))
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
             pass

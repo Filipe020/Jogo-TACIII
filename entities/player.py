@@ -21,22 +21,20 @@ class Player(Entity):
         super().__init__(x, y, self.WIDTH, self.HEIGHT)
         self.progression = progression
 
-        self.max_health = 100 + progression.bonus_vida_maxima()
-        self.health = self.max_health
-        self.speed = settings.MOVE_SPEED * progression.multiplicador_velocidade()
-
         self.sword = Sword()
         self.shuriken_weapon = ShurikenWeapon()
-        self.shurikens_max = 5 + progression.bonus_shurikens()
-        self.shurikens = self.shurikens_max
+        self.cooldown_espada_base = self.sword.cooldown
+        self.cooldown_shuriken_base = self.shuriken_weapon.cooldown
+        self.max_health = 100
+        self.health = 100
+        self.speed = settings.MOVE_SPEED
+        self.shurikens_max = 5
+        self.shurikens = 5
         self.shuriken_regen_time = 2.2
         self.shuriken_regen_timer = 0.0
-
-        self.mult_dano_espada = progression.multiplicador_dano_espada()
-        self.mult_dano_shuriken = progression.multiplicador_dano_shuriken()
-        mult_vel_ataque = progression.multiplicador_velocidade_ataque()
-        self.sword.cooldown *= mult_vel_ataque
-        self.shuriken_weapon.cooldown *= mult_vel_ataque
+        self.mult_dano_espada = 1.0
+        self.mult_dano_shuriken = 1.0
+        self.aplicar_melhorias()  # Aplica os níveis iniciais, se a opção foi Continuar.
 
         self.invulneravel_timer = 0.0
         self.ataque_visual_timer = 0.0
@@ -54,6 +52,29 @@ class Player(Entity):
         self.anim.trocar_estado("idle")
         self.anim_acao_timer = 0.0   #duração restante de uma animação de ação (ataque/dano)
         self.anim_acao_nome = None   # 'attack_sword' | 'attack_shuriken' | 'hurt'
+
+    def aplicar_melhorias(self):
+        """Atualiza imediatamente os atributos sem recriar o jogador.
+
+        Não restaura toda a vida ou shurikens: concede apenas o aumento
+        correspondente quando o máximo sobe.
+        """
+        nova_vida_max = 100 + self.progression.bonus_vida_maxima()
+        delta_vida = nova_vida_max - self.max_health
+        self.max_health = nova_vida_max
+        self.health = max(0, min(self.max_health, self.health + max(0, delta_vida)))
+
+        self.speed = settings.MOVE_SPEED * self.progression.multiplicador_velocidade()
+        novo_max_shurikens = 5 + self.progression.bonus_shurikens()
+        delta_shurikens = novo_max_shurikens - self.shurikens_max
+        self.shurikens_max = novo_max_shurikens
+        self.shurikens = max(0, min(novo_max_shurikens, self.shurikens + max(0, delta_shurikens)))
+
+        self.mult_dano_espada = self.progression.multiplicador_dano_espada()
+        self.mult_dano_shuriken = self.progression.multiplicador_dano_shuriken()
+        mult = self.progression.multiplicador_velocidade_ataque()
+        self.sword.cooldown = self.cooldown_espada_base * mult
+        self.shuriken_weapon.cooldown = self.cooldown_shuriken_base * mult
 
     #---Entrada---
     def handle_input(self, keys, audio):

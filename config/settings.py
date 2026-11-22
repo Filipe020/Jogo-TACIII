@@ -10,6 +10,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SCREEN_WIDTH = 960
 SCREEN_HEIGHT = 540
+FULLSCREEN = True
 FPS = 60
 TITLE = "Shadow Rebirth"
 

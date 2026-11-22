@@ -57,6 +57,8 @@ class MainMenu:
                     self.ip_ativo = False
                     return None
                 if self.tela == "configuracoes":
+                    if nome.startswith("Tela Cheia:"):
+                        return "toggle_fullscreen"
                     return None
                 if self.tela == "multiplayer":
                     if nome == "Criar sala":
@@ -113,13 +115,20 @@ class MainMenu:
         self.botoes = []
         if self.tela == "configuracoes":
             titulo = self.fonte_titulo.render("CONFIGURAÇÕES", True, (246, 220, 255))
-            surface.blit(titulo, titulo.get_rect(center=(480, 112)))
-            linhas = ["CONTROLES", "A / D  -  Movimentar", "W / ESPAÇO  -  Pular", "Botão esquerdo  -  Espada", "Botão direito  -  Shuriken", "H - Habilidades durante a partida"]
+            surface.blit(titulo, titulo.get_rect(center=(480, 96)))
+            linhas = [
+                "CONTROLES",
+                "A / D  -  Movimentar   |   W / ESPAÇO  -  Pular",
+                "Botão esquerdo  -  Espada   |   Botão direito  -  Shuriken",
+                "H  -  Habilidades   |   E / ENTER  -  Entrar na porta",
+                "F11  -  Alternar Tela Cheia / Janela",]
             for i, linha in enumerate(linhas):
                 fonte = self.fonte_botao if i == 0 else self.fonte_subtitulo
                 texto = fonte.render(linha, True, (245, 235, 255))
-                surface.blit(texto, texto.get_rect(center=(480, 180 + i * 35)))
-            self._desenhar_botao(surface, "Voltar", 458)
+                surface.blit(texto, texto.get_rect(center=(480, 162 + i * 34)))
+            estado_fs = "ATIVADA" if getattr(settings, "FULLSCREEN", True) else "DESATIVADA"
+            self._desenhar_botao(surface, f"Tela Cheia: {estado_fs}", 378)
+            self._desenhar_botao(surface, "Voltar", 442)
             return
 
         if self.tela == "multiplayer":

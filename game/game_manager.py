@@ -63,11 +63,26 @@ class GameManager:
         self.lan_message = ""
         self.pausa_selecionado = 0
 
+        self.fullscreen = bool(getattr(settings, "FULLSCREEN", True))
+
         self.meta_inimigos = settings.INIMIGOS_PARA_CHEFE
         self.terremoto_timer = 0.0
         self.terremoto_ativado = False
         self.aviso_chefe_timer = 0.0
         self.porta_rect = None
+
+    
+    
+    def alternar_tela_cheia(self):
+        self.fullscreen = not getattr(self, "fullscreen", bool(getattr(settings, "FULLSCREEN", True)))
+        settings.FULLSCREEN = self.fullscreen
+        flags = (pygame.FULLSCREEN | pygame.SCALED) if self.fullscreen else pygame.SCALED
+        try:
+            self.screen = pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), flags)
+        except pygame.error:
+            fallback_flags = pygame.FULLSCREEN if self.fullscreen else 0
+            self.screen = pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), fallback_flags)
+    
 
     def _ativar_evento_chefe(self):
         if self.terremoto_ativado or self.run_state.fase_atual != 1:
@@ -442,6 +457,9 @@ class GameManager:
 
     #---Eventos---
     def handle_event(self, event):
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+            self.alternar_tela_cheia()
+            return
         if self.state == GameState.EDITOR:
             acao = self.editor.handle_event(event)
             if acao == "menu":
@@ -468,9 +486,13 @@ class GameManager:
             elif acao == "continuar":
                 self.iniciar_run()
                 self.audio.play("menu")
+                self.sair_solicitado = True
+            elif acao == "toggle_fullscreen":
+                self.alternar_tela_cheia()
+                self.audio.play("menu")
             elif acao == "sair":
                 self.sair_solicitado = True
-            return
+                return
 
         if self.state == GameState.HABILIDADES:
             acao = self.upgrade_menu.handle_event(event)

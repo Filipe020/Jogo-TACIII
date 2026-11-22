@@ -9,10 +9,21 @@ from config import settings
 from game.game_manager import GameManager
 
 
+def criar_janela(fullscreen=None):
+    if fullscreen is None:
+        fullscreen = bool(getattr(settings, "FULLSCREEN", True))
+    flags = (pygame.FULLSCREEN | pygame.SCALED) if fullscreen else pygame.SCALED
+    try:
+        return pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), flags)
+    except pygame.error:
+        fallback_flags = pygame.FULLSCREEN if fullscreen else 0
+        return pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), fallback_flags)
+
+
 def main():
     pygame.init()
     pygame.display.set_caption(settings.TITLE)
-    screen = pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
+    screen = criar_janela()
     clock = pygame.time.Clock()
 
     gerenciador = GameManager(screen)

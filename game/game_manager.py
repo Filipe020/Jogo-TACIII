@@ -21,6 +21,7 @@ from ui.upgrade_menu import UpgradeMenu
 from ui.game_over import GameOverScreen
 from ui.level_editor import LevelEditor
 from systems.background import TempleBackground
+from systems.display import font, mouse_pos, sdim, spt, srect, sval
 from config import settings
 
 
@@ -727,20 +728,20 @@ class GameManager:
             r = plat.copy()
             r.x -= cam
             r.y += shake_y
-            pygame.draw.rect(self.screen, cor_plat, r)
-            pygame.draw.rect(self.screen, cor_topo, (r.x, r.y, r.width, 6))
+            pygame.draw.rect(self.screen, cor_plat, srect(r))
+            pygame.draw.rect(self.screen, cor_topo, srect(r.x, r.y, r.width, 6))
 
-        # Desenha a porta para a fase final
         if self.porta_rect:
             pr = self.porta_rect.copy()
             pr.x -= cam
             pr.y += shake_y
-            pygame.draw.rect(self.screen, (36, 14, 48), pr, border_radius=8)
-            pygame.draw.rect(self.screen, (220, 70, 95), pr, width=3, border_radius=8)
-            pygame.draw.rect(self.screen, (150, 30, 55), pr.inflate(-14, -14), border_radius=5)
-            fonte_p = pygame.font.SysFont("consolas", 14, bold=True)
+            dpr = srect(pr)
+            pygame.draw.rect(self.screen, (36, 14, 48), dpr, border_radius=sval(8))
+            pygame.draw.rect(self.screen, (220, 70, 95), dpr, width=sval(3), border_radius=sval(8))
+            pygame.draw.rect(self.screen, (150, 30, 55), dpr.inflate(-sval(14), -sval(14)), border_radius=sval(5))
+            fonte_p = font(14, bold=True)
             lbl = fonte_p.render("[E] ENTRAR", True, (255, 225, 230))
-            self.screen.blit(lbl, lbl.get_rect(center=(pr.centerx, pr.top - 14)))
+            self.screen.blit(lbl, lbl.get_rect(center=(dpr.centerx, dpr.top - sval(14))))
 
         for inimigo in self.enemies:
             inimigo.draw(self.screen, cam)
@@ -759,38 +760,42 @@ class GameManager:
         if self.state == GameState.RUN:
             self.upgrade_menu.desenhar_botao_hud(self.screen, self.run_progression)
 
-        # Banner de aviso durante/após o terremoto
         if self.aviso_chefe_timer > 0 or self.terremoto_timer > 0:
-            fonte_aviso = pygame.font.SysFont("consolas", 30, bold=True)
+            fonte_aviso = font(30, bold=True)
             txt = fonte_aviso.render("O CHEFE ESTÁ AGUARDANDO", True, (255, 85, 95))
-            caixa = txt.get_rect(center=(settings.SCREEN_WIDTH // 2, 125))
-            fundo_msg = caixa.inflate(36, 20)
+            caixa = txt.get_rect(center=spt(settings.SCREEN_WIDTH // 2, 125))
+            fundo_msg = caixa.inflate(sval(36), sval(20))
             s = pygame.Surface(fundo_msg.size, pygame.SRCALPHA)
             s.fill((15, 5, 18, 215))
             self.screen.blit(s, fundo_msg.topleft)
-            pygame.draw.rect(self.screen, (235, 70, 85), fundo_msg, width=2, border_radius=8)
+            pygame.draw.rect(self.screen, (235, 70, 85), fundo_msg, width=sval(2), border_radius=sval(8))
             self.screen.blit(txt, caixa)
 
         if self.em_teste:
-            fonte = pygame.font.SysFont("consolas", 16, bold=True)
+            fonte = font(16, bold=True)
             tag = fonte.render("MODO TESTE - ESC para voltar ao editor", True, (240, 230, 255))
-            caixa = pygame.Rect(12, settings.SCREEN_HEIGHT - 32, tag.get_width() + 20, 26)
-            pygame.draw.rect(self.screen, (48, 31, 75), caixa, border_radius=5)
-            self.screen.blit(tag, (caixa.x + 10, caixa.y + 4))
+            caixa = pygame.Rect(
+                sval(12),
+                sval(settings.SCREEN_HEIGHT - 32),
+                tag.get_width() + sval(20),
+                sval(26),
+            )
+            pygame.draw.rect(self.screen, (48, 31, 75), caixa, border_radius=sval(5))
+            self.screen.blit(tag, (caixa.x + sval(10), caixa.y + sval(4)))
 
     def _etiqueta_jogador(self, player, cam, texto):
-        fonte = pygame.font.SysFont("consolas", 14, bold=True)
+        fonte = font(14, bold=True)
         render = fonte.render(texto, True, (245, 230, 255))
         x = player.rect.centerx - cam
-        self.screen.blit(render, render.get_rect(center=(x, player.rect.top - 17)))
+        self.screen.blit(render, render.get_rect(center=spt(x, player.rect.top - 17)))
 
     def _desenhar_lobby(self):
         self.background.draw(self.screen, 0)
-        fundo = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        fundo = pygame.Surface(sdim(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
         fundo.fill((9, 7, 22, 165))
         self.screen.blit(fundo, (0, 0))
-        titulo = pygame.font.SysFont("consolas", 37, bold=True)
-        fonte = pygame.font.SysFont("consolas", 20)
+        titulo = font(37, bold=True)
+        fonte = font(20)
         linhas = [
             "MULTIPLAYER LAN",
             self.lan_message,
@@ -799,42 +804,43 @@ class GameManager:
         ]
         for idx, linha in enumerate(linhas):
             txt = (titulo if idx == 0 else fonte).render(linha, True, (244, 222, 255))
-            self.screen.blit(txt, txt.get_rect(center=(settings.SCREEN_WIDTH // 2, 150 + idx * 65)))
+            self.screen.blit(txt, txt.get_rect(center=spt(settings.SCREEN_WIDTH // 2, 150 + idx * 65)))
 
     def _desenhar_pausa(self):
-        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay = pygame.Surface(sdim(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((6, 4, 19, 195))
         self.screen.blit(overlay, (0, 0))
 
         opcoes = self._opcoes_pausa()
-        painel = pygame.Rect(0, 0, 410, 325 if self.em_teste else 270)
-        painel.center = (settings.SCREEN_WIDTH // 2, settings.SCREEN_HEIGHT // 2 + 9)
-        pygame.draw.rect(self.screen, (24, 17, 44), painel, border_radius=14)
-        pygame.draw.rect(self.screen, (126, 87, 170), painel, width=2, border_radius=14)
+        painel = srect(0, 0, 410, 325 if self.em_teste else 270)
+        painel.center = spt(settings.SCREEN_WIDTH // 2, settings.SCREEN_HEIGHT // 2 + 9)
+        pygame.draw.rect(self.screen, (24, 17, 44), painel, border_radius=sval(14))
+        pygame.draw.rect(self.screen, (126, 87, 170), painel, width=sval(2), border_radius=sval(14))
 
-        titulo = pygame.font.SysFont("consolas", 38, bold=True)
+        titulo = font(38, bold=True)
         texto = titulo.render("PAUSADO", True, (246, 222, 255))
-        self.screen.blit(texto, texto.get_rect(center=(settings.SCREEN_WIDTH // 2, painel.top + 48)))
+        self.screen.blit(texto, texto.get_rect(center=(painel.centerx, painel.top + sval(48))))
 
-        fonte_botao = pygame.font.SysFont("consolas", 21, bold=True)
-        mouse = pygame.mouse.get_pos()
+        fonte_botao = font(21, bold=True)
+        mouse = mouse_pos()
         for i, (_, rotulo, rect) in enumerate(opcoes):
             destaque = rect.collidepoint(mouse) or i == self.pausa_selecionado
             cor = (75, 43, 106) if destaque else (36, 27, 60)
             borda = (224, 151, 255) if destaque else (116, 83, 151)
-            pygame.draw.rect(self.screen, cor, rect, border_radius=8)
-            pygame.draw.rect(self.screen, borda, rect, width=2, border_radius=8)
+            drect = srect(rect)
+            pygame.draw.rect(self.screen, cor, drect, border_radius=sval(8))
+            pygame.draw.rect(self.screen, borda, drect, width=sval(2), border_radius=sval(8))
             texto = fonte_botao.render(rotulo, True, (246, 232, 255))
-            self.screen.blit(texto, texto.get_rect(center=rect.center))
+            self.screen.blit(texto, texto.get_rect(center=drect.center))
 
         rodape = (
             "Pausa local: a partida LAN continua"
             if self.multiplayer
             else "ESC: continuar  |  Setas + ENTER: selecionar"
         )
-        fonte_pequena = pygame.font.SysFont("consolas", 14)
+        fonte_pequena = font(14)
         detalhe = fonte_pequena.render(rodape, True, (206, 189, 226))
         self.screen.blit(
             detalhe,
-            detalhe.get_rect(center=(settings.SCREEN_WIDTH // 2, painel.bottom - 20)),
+            detalhe.get_rect(center=(painel.centerx, painel.bottom - sval(20))),
         )

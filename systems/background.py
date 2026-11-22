@@ -2,6 +2,7 @@
 import os
 import pygame
 from config import settings
+from systems.display import sdim, sval
 
 
 class TempleBackground:
@@ -17,7 +18,7 @@ class TempleBackground:
         if caminho and os.path.exists(caminho):
             try:
                 origem = pygame.image.load(caminho).convert()
-                self.imagem = pygame.transform.smoothscale(origem, (1120, 630))
+                self.imagem = pygame.transform.smoothscale(origem, sdim(1120, 630))
             except pygame.error:
                 pass
 
@@ -25,4 +26,4 @@ class TempleBackground:
         surface.fill(self.cor_fundo)
         if self.imagem:
             deslocamento = min(160, max(0, int(camera_x * 0.06)))
-            surface.blit(self.imagem, (-deslocamento, -45))
+            surface.blit(self.imagem, (-sval(deslocamento), -sval(45)))

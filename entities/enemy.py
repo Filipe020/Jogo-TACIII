@@ -12,6 +12,7 @@ from systems import physics, collision, combat
 from systems.animation import AnimationController
 from config import settings
 from config.animations import ENEMY_ANIMATIONS
+from systems.display import srect
 
 TIPOS = {
     "basico": dict(width=26, height=38, health=30, damage=10, speed=90,
@@ -217,9 +218,9 @@ class Enemy(Entity):
         if self.alive and self.health < self.max_health:
             rect = self.rect
             rect.x -= camera_x
-            barra_bg = pygame.Rect(rect.x, rect.y - 8, rect.width, 4)
+            barra_bg = srect(rect.x, rect.y - 8, rect.width, 4)
             pct = max(0, self.health / self.max_health)
-            barra_fg = pygame.Rect(rect.x, rect.y - 8, int(rect.width * pct), 4)
+            barra_fg = srect(rect.x, rect.y - 8, int(rect.width * pct), 4)
             pygame.draw.rect(surface, settings.COLOR_HP_BG, barra_bg)
             pygame.draw.rect(surface, settings.COLOR_HP, barra_fg)
 

@@ -12,6 +12,7 @@ from systems import physics, collision, combat
 from systems.animation import AnimationController
 from config import settings
 from config.animations import PLAYER_ANIMATIONS, PLAYER_FRAME_SIZE
+from systems.display import srect, sval
 
 class Player(Entity):
     WIDTH = 28
@@ -222,7 +223,7 @@ class Player(Entity):
         if hitbox:
             r = hitbox.copy()
             r.x -= camera_x
-            pygame.draw.rect(surface, settings.COLOR_SWORD, r, 2, border_radius=3)
+            pygame.draw.rect(surface, settings.COLOR_SWORD, srect(r), sval(2), border_radius=sval(3))
 
         for proj in self.projectiles:
             proj.draw(surface, camera_x)

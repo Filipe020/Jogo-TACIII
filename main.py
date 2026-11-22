@@ -7,23 +7,14 @@ import pygame
 
 from config import settings
 from game.game_manager import GameManager
-
-
-def criar_janela(fullscreen=None):
-    if fullscreen is None:
-        fullscreen = bool(getattr(settings, "FULLSCREEN", True))
-    flags = (pygame.FULLSCREEN | pygame.SCALED) if fullscreen else pygame.SCALED
-    try:
-        return pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), flags)
-    except pygame.error:
-        fallback_flags = pygame.FULLSCREEN if fullscreen else 0
-        return pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), fallback_flags)
+from systems.display import scale_event
 
 
 def main():
     pygame.init()
     pygame.display.set_caption(settings.TITLE)
-    screen = criar_janela()
+    flags = pygame.FULLSCREEN | pygame.SCALED
+    screen = pygame.display.set_mode((settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT), flags)
     clock = pygame.time.Clock()
 
     gerenciador = GameManager(screen)
@@ -31,13 +22,13 @@ def main():
     rodando = True
     while rodando:
         dt = clock.tick(settings.FPS) / 1000.0
-        dt = min(dt, 0.05)  # evita saltos grandes de física após travamentos
+        dt = min(dt, 0.05)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 rodando = False
             else:
-                gerenciador.handle_event(event)
+                gerenciador.handle_event(scale_event(event))
 
         if gerenciador.sair_solicitado:
             rodando = False

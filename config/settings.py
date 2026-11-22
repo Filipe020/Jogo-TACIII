@@ -53,6 +53,7 @@ ENEMY_COLORS = {
 # E / ENTER          -> entrar na porta da fase final
 # Clique esquerdo    -> espada
 # Clique direito     -> shuriken
+# H                  -> habilidades durante a partida
 # ESC                -> pausar / abrir menu
 # Enter              -> confirmar seleção
 

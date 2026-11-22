@@ -28,6 +28,9 @@ def main():
             else:
                 gerenciador.handle_event(event)
 
+        if gerenciador.sair_solicitado:
+            rodando = False
+            break
         gerenciador.update(dt)
         gerenciador.draw()
         pygame.display.flip()

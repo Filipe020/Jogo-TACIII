@@ -10,12 +10,13 @@ class GameState(Enum):
     LAN_LOBBY = auto()
     RUN = auto()
     PAUSADO = auto()
+    HABILIDADES = auto()
     SALA_EVOLUCAO = auto()
     GAME_OVER = auto()
 
 
 class RunState:
-    """Guarda o progresso da Run atual."""
+    """Guarda as eliminações, o tempo e o progresso de fase da run atual, reiniciados a cada partida."""
 
     def __init__(self, meta_inimigos=None):
         self.meta_inimigos = max(1, int(meta_inimigos if meta_inimigos is not None else settings.INIMIGOS_PARA_CHEFE))

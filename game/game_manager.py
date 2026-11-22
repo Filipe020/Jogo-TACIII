@@ -11,12 +11,13 @@ from entities.enemy import Enemy
 from entities.projectile import Projectile
 from network.lan import LANPeer, PORT, local_ip
 from levels.level_data import normalizar_mapa, carregar_slot, mapa_padrao
-from systems.progression import Progression
+from systems.progression import Progression, UPGRADE_DEFS
 from systems.collision import check_attack_hit
 from systems.audio import AudioManager
 from ui.main_menu import MainMenu
 from ui.hud import HUD
 from ui.evolution_menu import EvolutionMenu
+from ui.upgrade_menu import UpgradeMenu
 from ui.game_over import GameOverScreen
 from ui.level_editor import LevelEditor
 from systems.background import TempleBackground
@@ -29,6 +30,7 @@ class GameManager:
         self.state = GameState.MENU
 
         self.progression = Progression()
+        self.run_progression = self.progression
         self.run_state = RunState()
         self.level_manager = LevelManager()
         self.audio = AudioManager()
@@ -45,7 +47,9 @@ class GameManager:
         self.main_menu = MainMenu()
         self.hud = HUD()
         self.evolution_menu = EvolutionMenu(self.progression)
+        self.upgrade_menu = UpgradeMenu()
         self.game_over_screen = GameOverScreen()
+        self.sair_solicitado = False
 
         self.game_over_timer = 0.0
         self.lan = None
@@ -122,18 +126,24 @@ class GameManager:
         self.porta_rect = None
 
         self.multiplayer = multiplayer
+        # Testes do editor e LAN não modificam o save solo do jogador.
+        self.run_progression = (
+            Progression(carregar=False, persistir=False)
+            if teste or multiplayer
+            else self.progression
+        )
         spawn_x, spawn_y = self.level_manager.spawn_jogador
         self.player = Player(
             spawn_x + (68 if multiplayer and self.lan_role == "client" else 0),
             spawn_y,
-            self.progression,
+            self.run_progression,
         )
         self.remote_player = None
         if multiplayer:
             self.remote_player = Player(
                 spawn_x + (0 if self.lan_role == "client" else 68),
                 spawn_y,
-                self.progression,
+                self.run_progression,
             )
         self.client_enemies = {}
         self.enemies = self.level_manager.criar_inimigos_iniciais(limite_total=self.run_state.meta_inimigos)
@@ -141,10 +151,11 @@ class GameManager:
         self.camera_x = 0.0
         self.em_teste = teste
         self.pausa_selecionado = 0
+        self.upgrade_menu.abrir()
         self.state = GameState.RUN
 
     def encerrar_run(self):
-        self.progression.encerrar_run(self.run_state)
+        self.run_progression.encerrar_run(self.run_state)
         self.state = GameState.GAME_OVER
         self.game_over_timer = 1.4
 
@@ -209,19 +220,24 @@ class GameManager:
                         key: bool(actions.get(key)) for key in ("left", "right", "jump", "sword", "shuriken")
                     }
                     self.remote_input_age = 0.0
+            elif self.lan_role == "host" and tipo == "upgrade":
+                chave = message.get("key")
+                if self.multiplayer and self.state in (GameState.RUN, GameState.PAUSADO, GameState.HABILIDADES):
+                    if isinstance(chave, str) and chave in UPGRADE_DEFS:
+                        self._comprar_habilidade(chave)
             elif self.lan_role == "client" and tipo == "welcome" and self.state == GameState.LAN_LOBBY:
                 try:
                     self.iniciar_run(mapa=message["map"], multiplayer=True)
                 except (ValueError, KeyError, TypeError):
                     self._voltar_menu_lan("Mapa recebido é inválido.")
                     return
-            elif self.lan_role == "client" and tipo == "snapshot" and self.state in (GameState.RUN, GameState.PAUSADO):
+            elif self.lan_role == "client" and tipo == "snapshot" and self.state in (GameState.RUN, GameState.PAUSADO, GameState.HABILIDADES):
                 try:
                     self._aplicar_snapshot(message)
                 except (ValueError, KeyError, TypeError, IndexError):
                     continue
 
-        if self.state not in (GameState.RUN, GameState.PAUSADO) or not self.multiplayer:
+        if self.state not in (GameState.RUN, GameState.PAUSADO, GameState.HABILIDADES) or not self.multiplayer:
             return
         self.net_timer += dt
         if self.lan_role == "host":
@@ -273,6 +289,7 @@ class GameManager:
         return {
             "type": "snapshot",
             "kills": self.run_state.inimigos_derrotados,
+            "upgrades": self.run_progression.estado_rede(),
             "players": [self._dados_player(self.player), self._dados_player(self.remote_player)],
             "enemies": [
                 {
@@ -318,6 +335,8 @@ class GameManager:
         self._aplicar_player(self.remote_player, dados["players"][0])
         self._aplicar_player(self.player, dados["players"][1])
         self.run_state.inimigos_derrotados = int(dados["kills"])
+        self.run_progression.receber_estado_remoto(dados.get("upgrades"))
+        self._aplicar_melhorias_jogadores()
         vivos = {}
         for item in dados["enemies"][:200]:
             uid = int(item["id"])
@@ -348,6 +367,34 @@ class GameManager:
         alvo = self.player.rect.centerx - settings.SCREEN_WIDTH // 2
         alvo = max(self.level_manager.limites[0], min(alvo, self.level_manager.limites[1] - settings.SCREEN_WIDTH))
         self.camera_x += (alvo - self.camera_x) * min(1, dt * 6)
+
+    #---Evolução durante a partida---
+    def _aplicar_melhorias_jogadores(self):
+        for jogador in (self.player, self.remote_player):
+            if jogador is not None:
+                jogador.aplicar_melhorias()
+
+    def _comprar_habilidade(self, chave):
+        if chave not in UPGRADE_DEFS or not self.run_progression.pode_comprar(chave):
+            self.upgrade_menu.avisar("Pontos insuficientes ou nível máximo alcançado.")
+            return False
+        if self.multiplayer and self.lan_role == "client":
+            # Cliente só solicita; o anfitrião valida e aplica a compra.
+            if self.lan is not None:
+                self.lan.send({"type": "upgrade", "key": chave})
+                self.upgrade_menu.avisar("Compra enviada ao anfitrião...")
+                return True
+            return False
+        if self.run_progression.comprar(chave):
+            self._aplicar_melhorias_jogadores()
+            self.audio.play("upgrade")
+            self.upgrade_menu.avisar("Habilidade evoluída com sucesso!")
+            return True
+        return False
+
+    def _abrir_habilidades(self):
+        self.upgrade_menu.abrir()
+        self.state = GameState.HABILIDADES
 
     #---Menu de pausa---
     def _opcoes_pausa(self):
@@ -414,11 +461,23 @@ class GameManager:
                 self.state = GameState.EDITOR
                 self.editor.informar("Bem-vindo ao editor. F5 testa a fase atual.")
             elif acao == "novo_jogo":
+                # Diferente de Continuar, Novo Jogo nunca herda níveis anteriores.
+                self.progression.reiniciar_novo_jogo()
                 self.iniciar_run(mapa=mapa_padrao())
                 self.audio.play("menu")
             elif acao == "continuar":
                 self.iniciar_run()
                 self.audio.play("menu")
+            elif acao == "sair":
+                self.sair_solicitado = True
+            return
+
+        if self.state == GameState.HABILIDADES:
+            acao = self.upgrade_menu.handle_event(event)
+            if acao == "fechar":
+                self.state = GameState.RUN
+            elif acao is not None:
+                self._comprar_habilidade(acao)
             return
 
         if self.state == GameState.LAN_LOBBY:
@@ -445,6 +504,15 @@ class GameManager:
                     self._executar_opcao_pausa(opcoes[self.pausa_selecionado][0])
             return
 
+        if self.state == GameState.RUN:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.upgrade_menu.HUD_RECT.collidepoint(event.pos):
+                    self._abrir_habilidades()
+                    return
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_h:
+                self._abrir_habilidades()
+                return
+
         if event.type != pygame.KEYDOWN:
             return
 
@@ -470,6 +538,14 @@ class GameManager:
                 self._atualizar_cliente(dt)
             else:
                 self._atualizar_run(dt, keys)
+        elif self.state == GameState.HABILIDADES:
+            self.upgrade_menu.update(dt)
+            if self.multiplayer:
+                # Em LAN, não interrompe a simulação do outro computador.
+                if self.lan_role == "client":
+                    self._atualizar_cliente(dt)
+                else:
+                    self._atualizar_run(dt, keys, paused_local=True)
         elif self.state == GameState.PAUSADO and self.multiplayer:
             if self.lan_role == "client":
                 self._atualizar_cliente(dt)
@@ -570,7 +646,7 @@ class GameManager:
                         jogador.atingidos_espada.add(inimigo.uid)
                         inimigo.receber_dano(jogador._dano_espada(), self.audio)
                         if not inimigo.alive:
-                            self.progression.registrar_kill_run(self.run_state)
+                            self.run_progression.registrar_kill_run(self.run_state)
             for proj in jogador.projectiles:
                 if not proj.alive:
                     continue
@@ -579,7 +655,7 @@ class GameManager:
                         inimigo.receber_dano(proj.damage, self.audio)
                         proj.alive = False
                         if not inimigo.alive:
-                            self.progression.registrar_kill_run(self.run_state)
+                            self.run_progression.registrar_kill_run(self.run_state)
                         break
 
         for inimigo in self.enemies:
@@ -600,10 +676,12 @@ class GameManager:
             self.editor.draw(self.screen)
         elif self.state == GameState.LAN_LOBBY:
             self._desenhar_lobby()
-        elif self.state in (GameState.RUN, GameState.PAUSADO):
+        elif self.state in (GameState.RUN, GameState.PAUSADO, GameState.HABILIDADES):
             self._desenhar_run()
             if self.state == GameState.PAUSADO:
                 self._desenhar_pausa()
+            elif self.state == GameState.HABILIDADES:
+                self.upgrade_menu.draw(self.screen, self.run_progression, self.multiplayer)
         elif self.state == GameState.GAME_OVER:
             self._desenhar_run()
             self.game_over_screen.draw(self.screen, self.run_state)
@@ -653,6 +731,8 @@ class GameManager:
             )
 
         self.hud.draw(self.screen, self.player, self.run_state)
+        if self.state == GameState.RUN:
+            self.upgrade_menu.desenhar_botao_hud(self.screen, self.run_progression)
 
         # Banner de aviso durante/após o terremoto
         if self.aviso_chefe_timer > 0 or self.terremoto_timer > 0:

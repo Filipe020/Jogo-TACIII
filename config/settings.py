@@ -67,3 +67,7 @@ SAVE_FILE = os.path.join(BASE_DIR, "savegame.json")
 MENU_BACKGROUND = os.path.join(BASE_DIR, "assets", "sprites", "backgrounds", "menu_background.png")
 COMBAT_BACKGROUND = os.path.join(BASE_DIR, "assets", "sprites", "backgrounds", "combat_background.png")
 BOSS_BACKGROUND = os.path.join(BASE_DIR, "assets", "sprites", "backgrounds", "boss_background.png")
+
+#---Sprites das plataformas---
+PLATFORM_SPRITE = os.path.join(BASE_DIR, "assets", "sprites", "platforms", "platform.png")
+BOSS_PLATFORM_SPRITE = os.path.join(BASE_DIR, "assets", "sprites", "platforms", "boss_platform.png")

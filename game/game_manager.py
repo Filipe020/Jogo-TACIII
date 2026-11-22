@@ -97,7 +97,7 @@ class GameManager:
         # Cria a porta sobre o chão próximo ao jogador
         porta_w, porta_h = 56, 86
         px = max(80, min(self.level_manager.limites[1] - 140, int(self.player.rect.centerx + 110)))
-        chao_y = 460
+        chao_y = 528 if self.run_state.fase_atual == 1 else 460
         for plat in self.level_manager.plataformas:
             if plat.left <= px <= plat.right and plat.top >= self.player.rect.bottom - 10:
                 chao_y = plat.top
@@ -714,6 +714,29 @@ class GameManager:
         elif self.state == GameState.SALA_EVOLUCAO:
             self.evolution_menu.draw(self.screen, self.progression, self.run_state)
 
+    def _sprite_plataforma(self, largura, altura, fase_final=False):
+        if not hasattr(self, "_cache_plataformas"):
+            self._cache_plataformas = {}
+            self._img_plat_normal = None
+            self._img_plat_boss = None
+            for attr, caminho in (
+                ("_img_plat_normal", getattr(settings, "PLATFORM_SPRITE", "")),
+                ("_img_plat_boss", getattr(settings, "BOSS_PLATFORM_SPRITE", "")),
+            ):
+                if caminho and os.path.exists(caminho):
+                    try:
+                        setattr(self, attr, pygame.image.load(caminho).convert_alpha())
+                    except (pygame.error, OSError):
+                        pass
+
+        base = (self._img_plat_boss or self._img_plat_normal) if fase_final else self._img_plat_normal
+        if base is None:
+            return None
+        chave = (fase_final, largura, altura)
+        if chave not in self._cache_plataformas:
+            self._cache_plataformas[chave] = pygame.transform.smoothscale(base, (largura, altura))
+        return self._cache_plataformas[chave]
+
     def _desenhar_run(self):
         shake_x = random.randint(-7, 7) if self.terremoto_timer > 0 else 0
         shake_y = random.randint(-5, 5) if self.terremoto_timer > 0 else 0
@@ -722,14 +745,23 @@ class GameManager:
         fundo.draw(self.screen, self.camera_x + shake_x)
         cam = int(self.camera_x) - shake_x
 
-        cor_plat = settings.COLOR_BOSS_PLATFORM if self.run_state.fase_atual == 2 else settings.COLOR_PLATFORM
-        cor_topo = settings.COLOR_BOSS_PLATFORM_TOP if self.run_state.fase_atual == 2 else settings.COLOR_PLATFORM_TOP
+        fase_final = self.run_state.fase_atual == 2
+        cor_plat = settings.COLOR_BOSS_PLATFORM if fase_final else settings.COLOR_PLATFORM
+        cor_topo = settings.COLOR_BOSS_PLATFORM_TOP if fase_final else settings.COLOR_PLATFORM_TOP
         for plat in self.level_manager.plataformas:
+            # O chão de cada cenário é transparente para mostrar o piso da arte de fundo
+            if plat.y >= 520:
+                continue
             r = plat.copy()
             r.x -= cam
             r.y += shake_y
-            pygame.draw.rect(self.screen, cor_plat, srect(r))
-            pygame.draw.rect(self.screen, cor_topo, srect(r.x, r.y, r.width, 6))
+            dr = srect(r)
+            sprite_plat = self._sprite_plataforma(dr.width, dr.height, fase_final=fase_final)
+            if sprite_plat is not None:
+                self.screen.blit(sprite_plat, dr.topleft)
+            else:
+                pygame.draw.rect(self.screen, cor_plat, dr)
+                pygame.draw.rect(self.screen, cor_topo, srect(r.x, r.y, r.width, 6))
 
         if self.porta_rect:
             pr = self.porta_rect.copy()

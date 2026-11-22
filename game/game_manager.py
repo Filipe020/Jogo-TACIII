@@ -128,9 +128,12 @@ class GameManager:
         if mapa is None:
             try:
                 mapa = carregar_slot(self.editor.slot) or mapa_padrao()
-            except (ValueError, OSError, KeyError, TypeError):
+            except Exception:
                 mapa = mapa_padrao()
-        mapa = normalizar_mapa(mapa)
+        try:
+            mapa = normalizar_mapa(mapa)
+        except Exception:
+            mapa = normalizar_mapa(mapa_padrao())
         self.level_manager.carregar_mapa(mapa)
 
         self.meta_inimigos = settings.INIMIGOS_PARA_CHEFE
@@ -486,7 +489,7 @@ class GameManager:
             elif acao == "continuar":
                 self.iniciar_run()
                 self.audio.play("menu")
-                self.sair_solicitado = True
+                return
             elif acao == "toggle_fullscreen":
                 self.alternar_tela_cheia()
                 self.audio.play("menu")

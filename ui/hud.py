@@ -63,7 +63,10 @@ class HUD:
         # --- Pontos (inimigos derrotados): ícone + contador ---
         y_kills = y_shuriken + 30
         surface.blit(self.icone_kills, (x, y_kills))
-        texto_kills = self.fonte.render(
-            f"{run_state.inimigos_derrotados}", True, settings.COLOR_TEXT
+        rotulo_kills = (
+            f"{run_state.inimigos_derrotados}/{run_state.meta_inimigos}"
+            if run_state.fase_atual == 1
+            else f"{run_state.inimigos_derrotados} (FASE FINAL)"
         )
+        texto_kills = self.fonte.render(rotulo_kills, True, settings.COLOR_TEXT)
         surface.blit(texto_kills, (x + TAMANHO_ICONE + 8, y_kills + 3))

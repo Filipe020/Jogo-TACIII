@@ -27,8 +27,13 @@ class LevelManager:
         self.tempo_desde_spawn = 0.0
         self.intervalo_spawn = 2.6
 
-    def criar_inimigos_iniciais(self):
-        return [Enemy(item["x"], item["y"], item["tipo"]) for item in self.inimigos_iniciais]
+    def criar_inimigos_iniciais(self, limite_total=None):
+        lista = (
+            self.inimigos_iniciais
+            if limite_total is None
+            else self.inimigos_iniciais[:max(0, limite_total)]
+        )
+        return [Enemy(item["x"], item["y"], item["tipo"]) for item in lista]
 
     def _tipo_aleatorio(self, tempo_de_run):
         pesos = {
@@ -40,8 +45,10 @@ class LevelManager:
         tipos, peso_lista = zip(*pesos.items())
         return random.choices(tipos, weights=peso_lista, k=1)[0]
 
-    def atualizar_spawner(self, dt, tempo_de_run, player_x, inimigos_atuais):
+    def atualizar_spawner(self, dt, tempo_de_run, player_x, inimigos_atuais, total_spawnados=0, limite_total=None):
         if not self.spawn_automatico:
+            return None
+        if limite_total is not None and total_spawnados >= limite_total:
             return None
         self.tempo_desde_spawn += dt
         self.intervalo_spawn = max(0.9, 2.6 - (tempo_de_run // 20) * 0.15)

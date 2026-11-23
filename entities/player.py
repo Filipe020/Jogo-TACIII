@@ -215,7 +215,7 @@ class Player(Entity):
         frame_w, frame_h = PLAYER_FRAME_SIZE
         # Ancora o sprite pelos "pés": centro horizontal e base do hitbox.
         draw_x = self.rect.centerx - camera_x - frame_w // 2
-        draw_y = self.rect.bottom - frame_h
+        draw_y = self.rect.bottom - frame_h + 6
 
         frame_surf = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
         self.anim.desenhar(frame_surf, 0, 0, self.facing)

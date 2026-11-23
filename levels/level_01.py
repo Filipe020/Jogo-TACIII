@@ -1,24 +1,24 @@
 """Nível inicial — templo em ruínas com plataformas em diferentes alturas."""
 
-from levels.rooms import plataforma, gerar_chao
+from levels.rooms import plataforma
+from config import settings
 
 LARGURA_NIVEL = 3600
-CHAO_Y = 528
+CHAO_Y = settings.GROUND_Y  # mesma altura do chão físico invisível
 
 def construir_plataformas():
     return [
-        gerar_chao(0, LARGURA_NIVEL, CHAO_Y, altura=12),
-        plataforma(260, 430, 160),
-        plataforma(520, 370, 140),
-        plataforma(760, 445, 180),
-        plataforma(1050, 330, 120),
-        plataforma(1300, 410, 200),
-        plataforma(1650, 370, 140),
-        plataforma(1900, 445, 220),
-        plataforma(2200, 330, 140),
-        plataforma(2450, 410, 180),
-        plataforma(2750, 370, 160),
-        plataforma(3050, 445, 220),
+        plataforma(260, 360, 160),
+        plataforma(520, 300, 140),
+        plataforma(760, 380, 180),
+        plataforma(1050, 260, 120),
+        plataforma(1300, 340, 200),
+        plataforma(1650, 300, 140),
+        plataforma(1900, 380, 220),
+        plataforma(2200, 260, 140),
+        plataforma(2450, 340, 180),
+        plataforma(2750, 300, 160),
+        plataforma(3050, 380, 220),
     ]
 
 
@@ -27,4 +27,4 @@ def limites_nivel():
 
 
 def spawn_inicial_jogador():
-    return (60, CHAO_Y - 60)
+    return (60, CHAO_Y - 44)  # inicia com os pés no terreno da arte

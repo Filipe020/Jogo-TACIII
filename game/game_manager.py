@@ -1,8 +1,7 @@
 """Controla o estado geral do jogo: menu, Run, pausa, morte e Sala de Evolução"""
 
-import os
-import random
 import pygame
+import os
 
 from game.game_state import GameState, RunState
 from game.level_manager import LevelManager
@@ -10,7 +9,7 @@ from entities.player import Player
 from entities.enemy import Enemy
 from entities.projectile import Projectile
 from network.lan import LANPeer, PORT, local_ip
-from levels.level_data import normalizar_mapa, carregar_slot, mapa_padrao
+from levels.level_data import normalizar_mapa
 from systems.progression import Progression, UPGRADE_DEFS
 from systems.collision import check_attack_hit
 from systems.audio import AudioManager
@@ -21,9 +20,8 @@ from ui.upgrade_menu import UpgradeMenu
 from ui.game_over import GameOverScreen
 from ui.level_editor import LevelEditor
 from systems.background import TempleBackground
-from systems.display import font, mouse_pos, sdim, spt, srect, sval
+from levels.level_data import carregar_slot, mapa_padrao
 from config import settings
-
 
 class GameManager:
     def __init__(self, screen):
@@ -41,11 +39,11 @@ class GameManager:
         self.camera_x = 0.0
 
         self.background = TempleBackground()
-        self.boss_background = TempleBackground(settings.BOSS_BACKGROUND, settings.COLOR_BOSS_BG)
         self.editor = LevelEditor(self.background)
         self.em_teste = False
 
         self.main_menu = MainMenu()
+        self.main_menu.som_ativo = not self.audio.muted
         self.hud = HUD()
         self.evolution_menu = EvolutionMenu(self.progression)
         self.upgrade_menu = UpgradeMenu()
@@ -63,65 +61,12 @@ class GameManager:
         self.client_enemies = {}
         self.lan_message = ""
         self.pausa_selecionado = 0
-
-        self.fullscreen = bool(getattr(settings, "FULLSCREEN", True))
-
-        self.meta_inimigos = settings.INIMIGOS_PARA_CHEFE
-        self.terremoto_timer = 0.0
-        self.terremoto_ativado = False
         self.aviso_chefe_timer = 0.0
-        self.porta_rect = None
+        self.chefe_vitoria_timer = 0.0
+        self.mensagem_pos_chefe = 0.0
+        self._inimigos_antes_arena = []
+        self._retorno_arena = None
 
-    
-    
-    def alternar_tela_cheia(self):
-        self.fullscreen = not getattr(self, "fullscreen", bool(getattr(settings, "FULLSCREEN", True)))
-        settings.FULLSCREEN = self.fullscreen
-        flags = (pygame.FULLSCREEN | pygame.SCALED) if self.fullscreen else pygame.SCALED
-        try:
-            self.screen = pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), flags)
-        except pygame.error:
-            fallback_flags = pygame.FULLSCREEN if self.fullscreen else 0
-            self.screen = pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), fallback_flags)
-    
-
-    def _ativar_evento_chefe(self):
-        if self.terremoto_ativado or self.run_state.fase_atual != 1:
-            return
-        self.terremoto_ativado = True
-        self.terremoto_timer = settings.DURACAO_TERREMOTO
-        self.aviso_chefe_timer = 5.5
-        self.run_state.porta_liberada = True
-        self.audio.play("player_death")
-
-        # Cria a porta sobre o chão próximo ao jogador
-        porta_w, porta_h = 56, 86
-        px = max(80, min(self.level_manager.limites[1] - 140, int(self.player.rect.centerx + 110)))
-        chao_y = 528 if self.run_state.fase_atual == 1 else 460
-        for plat in self.level_manager.plataformas:
-            if plat.left <= px <= plat.right and plat.top >= self.player.rect.bottom - 10:
-                chao_y = plat.top
-                break
-        self.porta_rect = pygame.Rect(px, chao_y - porta_h, porta_w, porta_h)
-
-    def avancar_fase_final(self):
-        from levels.boss_arena import mapa_fase_final
-        mapa = normalizar_mapa(mapa_fase_final())
-        self.level_manager.carregar_mapa(mapa)
-        self.run_state.fase_atual = 2
-        self.run_state.porta_liberada = False
-        self.porta_rect = None
-        self.enemies = []
-        spawn_x, spawn_y = self.level_manager.spawn_jogador
-        self.player.x, self.player.y = float(spawn_x), float(spawn_y)
-        self.player.vx = self.player.vy = 0.0
-        self.player.projectiles.clear()
-        if self.multiplayer and self.remote_player:
-            self.remote_player.x, self.remote_player.y = float(spawn_x + 68), float(spawn_y)
-            self.remote_player.vx = self.remote_player.vy = 0.0
-            self.remote_player.projectiles.clear()
-        self.camera_x = 0.0
-        self.audio.play("upgrade")
 
     #---Transições de estado---
     def iniciar_run(self, mapa=None, teste=False, multiplayer=False):
@@ -129,44 +74,29 @@ class GameManager:
         if mapa is None:
             try:
                 mapa = carregar_slot(self.editor.slot) or mapa_padrao()
-            except Exception:
+            except (ValueError, OSError, KeyError, TypeError):
                 mapa = mapa_padrao()
-        try:
-            mapa = normalizar_mapa(mapa)
-        except Exception:
-            mapa = normalizar_mapa(mapa_padrao())
+        mapa = normalizar_mapa(mapa)
         self.level_manager.carregar_mapa(mapa)
-
-        self.meta_inimigos = settings.INIMIGOS_PARA_CHEFE
-        self.run_state.reiniciar(meta_inimigos=self.meta_inimigos)
-        self.terremoto_timer = 0.0
-        self.terremoto_ativado = False
-        self.aviso_chefe_timer = 0.0
-        self.porta_rect = None
-
+        self.run_state.reiniciar()
         self.multiplayer = multiplayer
         # Testes do editor e LAN não modificam o save solo do jogador.
-        self.run_progression = (
-            Progression(carregar=False, persistir=False)
-            if teste or multiplayer
-            else self.progression
-        )
+        self.run_progression = (Progression(carregar=False, persistir=False)
+                                if teste or multiplayer else self.progression)
         spawn_x, spawn_y = self.level_manager.spawn_jogador
-        self.player = Player(
-            spawn_x + (68 if multiplayer and self.lan_role == "client" else 0),
-            spawn_y,
-            self.run_progression,
-        )
+        self.player = Player(spawn_x + (68 if multiplayer and self.lan_role == "client" else 0),
+                             spawn_y, self.run_progression)
         self.remote_player = None
         if multiplayer:
-            self.remote_player = Player(
-                spawn_x + (0 if self.lan_role == "client" else 68),
-                spawn_y,
-                self.run_progression,
-            )
+            self.remote_player = Player(spawn_x + (0 if self.lan_role == "client" else 68),
+                                        spawn_y, self.run_progression)
         self.client_enemies = {}
-        self.enemies = self.level_manager.criar_inimigos_iniciais(limite_total=self.run_state.meta_inimigos)
-        self.run_state.inimigos_spawnados = len(self.enemies)
+        self.enemies = self.level_manager.criar_inimigos_iniciais()
+        self.aviso_chefe_timer = 0.0
+        self.chefe_vitoria_timer = 0.0
+        self.mensagem_pos_chefe = 0.0
+        self._inimigos_antes_arena = []
+        self._retorno_arena = None
         self.camera_x = 0.0
         self.em_teste = teste
         self.pausa_selecionado = 0
@@ -204,11 +134,8 @@ class GameManager:
             return
         self.lan_role = role
         self.lan = LANPeer(role, address.strip(), PORT)
-        self.lan_message = (
-            f"Sala criada! IP: {local_ip()}  Porta: {PORT}"
-            if role == "host"
-            else f"Conectando a {address}:{PORT}..."
-        )
+        self.lan_message = (f"Sala criada! IP: {local_ip()}  Porta: {PORT}" if role == "host"
+                            else f"Conectando a {address}:{PORT}...")
         self.remote_actions = {}
         self.remote_input_age = 0.0
         self.net_timer = 0.0
@@ -270,16 +197,14 @@ class GameManager:
             self.net_timer = 0.0
             keys = pygame.key.get_pressed()
             buttons = pygame.mouse.get_pressed()
-            self.lan.send({
-                "type": "input",
-                "actions": {
-                    "left": self.state == GameState.RUN and bool(keys[pygame.K_a]),
-                    "right": self.state == GameState.RUN and bool(keys[pygame.K_d]),
-                    "jump": self.state == GameState.RUN and bool(keys[pygame.K_w] or keys[pygame.K_SPACE]),
-                    "sword": self.state == GameState.RUN and bool(buttons[0]),
-                    "shuriken": self.state == GameState.RUN and bool(buttons[2]),
-                },
-            })
+            # O cliente pausado continua recebendo o mundo, mas não envia ações.
+            self.lan.send({"type": "input", "actions": {
+                "left": self.state == GameState.RUN and bool(keys[pygame.K_a]),
+                "right": self.state == GameState.RUN and bool(keys[pygame.K_d]),
+                "jump": self.state == GameState.RUN and bool(keys[pygame.K_w] or keys[pygame.K_SPACE]),
+                "sword": self.state == GameState.RUN and bool(buttons[0]),
+                "shuriken": self.state == GameState.RUN and bool(buttons[2]),
+            }})
 
     @staticmethod
     def _dados_proj(proj):
@@ -288,42 +213,30 @@ class GameManager:
     @staticmethod
     def _dados_player(player):
         return {
-            "x": round(player.x, 2),
-            "y": round(player.y, 2),
-            "vx": round(player.vx, 2),
-            "vy": round(player.vy, 2),
-            "facing": player.facing,
-            "health": player.health,
-            "max_health": player.max_health,
-            "shurikens": player.shurikens,
-            "shurikens_max": player.shurikens_max,
-            "morto": player.morto,
-            "invulneravel": round(player.invulneravel_timer, 2),
-            "anim": player.anim.estado_atual,
-            "attack": round(player.ataque_visual_timer, 2),
+            "x": round(player.x, 2), "y": round(player.y, 2),
+            "vx": round(player.vx, 2), "vy": round(player.vy, 2),
+            "facing": player.facing, "health": player.health, "max_health": player.max_health,
+            "shurikens": player.shurikens, "shurikens_max": player.shurikens_max,
+            "morto": player.morto, "invulneravel": round(player.invulneravel_timer, 2),
+            "anim": player.anim.estado_atual, "attack": round(player.ataque_visual_timer, 2),
             "projectiles": [GameManager._dados_proj(proj) for proj in player.projectiles if proj.alive],
         }
 
     def _criar_snapshot(self):
         return {
-            "type": "snapshot",
-            "kills": self.run_state.inimigos_derrotados,
+            "type": "snapshot", "kills": self.run_state.inimigos_derrotados,
+            "mobs_kills": self.run_state.mobs_derrotados,
+            "portal_target": self.level_manager.proximo_portal_mobs,
+            "boss_arena": self.level_manager.arena_ativa,
+            "boss_victory_time": round(self.chefe_vitoria_timer, 2),
             "upgrades": self.run_progression.estado_rede(),
             "players": [self._dados_player(self.player), self._dados_player(self.remote_player)],
-            "enemies": [
-                {
-                    "id": e.uid,
-                    "tipo": e.tipo,
-                    "x": round(e.x, 2),
-                    "y": round(e.y, 2),
-                    "facing": e.facing,
-                    "health": e.health,
-                    "alive": e.alive,
-                    "anim": e.anim.estado_atual,
-                    "projectiles": [self._dados_proj(p) for p in e.projectiles if p.alive],
-                }
-                for e in self.enemies
-            ],
+            "enemies": [{
+                "id": e.uid, "tipo": e.tipo, "x": round(e.x, 2), "y": round(e.y, 2),
+                "facing": e.facing, "health": e.health, "alive": e.alive,
+                "anim": e.anim.estado_atual,
+                "projectiles": [self._dados_proj(p) for p in e.projectiles if p.alive],
+            } for e in self.enemies],
         }
 
     @staticmethod
@@ -351,9 +264,23 @@ class GameManager:
         player.projectiles = self._restaurar_proj(dados["projectiles"], True)
 
     def _aplicar_snapshot(self, dados):
+        # O anfitrião decide quando os jogadores entram e saem da arena.
+        arena_remota = bool(dados.get("boss_arena", False))
+        if arena_remota and not self.level_manager.arena_ativa:
+            self.level_manager.entrar_arena_chefe()
+            self.camera_x = 0.0
+        elif not arena_remota and self.level_manager.arena_ativa:
+            self.level_manager.sair_arena_chefe()
+            self.mensagem_pos_chefe = 5.0
+        self.chefe_vitoria_timer = float(dados.get("boss_victory_time", 0.0))
+        # O cliente é o player 2. Os índices sempre se referem a host e convidado.
         self._aplicar_player(self.remote_player, dados["players"][0])
         self._aplicar_player(self.player, dados["players"][1])
         self.run_state.inimigos_derrotados = int(dados["kills"])
+        self.run_state.mobs_derrotados = max(0, int(dados.get("mobs_kills", dados["kills"])))
+        # O servidor é a referência para as metas, inclusive depois da arena.
+        self.level_manager.proximo_portal_mobs = max(10, int(
+            dados.get("portal_target", self.level_manager.proximo_portal_mobs)))
         self.run_progression.receber_estado_remoto(dados.get("upgrades"))
         self._aplicar_melhorias_jogadores()
         vivos = {}
@@ -374,12 +301,14 @@ class GameManager:
         self.enemies = list(vivos.values())
 
     def _atualizar_cliente(self, dt):
+        # Snapshots do host: o cliente não executa física nem combate localmente.
         if self.player is None:
             return
         self.player.anim.atualizar(dt)
         self.remote_player.anim.atualizar(dt)
         for enemy in self.enemies:
             enemy.anim.atualizar(dt)
+        self.mensagem_pos_chefe = max(0.0, self.mensagem_pos_chefe - dt)
         self._atualizar_camera(dt)
 
     def _atualizar_camera(self, dt):
@@ -426,16 +355,10 @@ class GameManager:
         espacamento = 13
         inicio = settings.SCREEN_HEIGHT // 2 - 35
         return [
-            (
-                acao,
-                rotulo,
-                pygame.Rect(
-                    (settings.SCREEN_WIDTH - largura) // 2,
-                    inicio + i * (altura + espacamento),
-                    largura,
-                    altura,
-                ),
-            )
+            (acao, rotulo, pygame.Rect(
+                (settings.SCREEN_WIDTH - largura) // 2,
+                inicio + i * (altura + espacamento), largura, altura,
+            ))
             for i, (acao, rotulo) in enumerate(opcoes)
         ]
 
@@ -461,9 +384,6 @@ class GameManager:
 
     #---Eventos---
     def handle_event(self, event):
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
-            self.alternar_tela_cheia()
-            return
         if self.state == GameState.EDITOR:
             acao = self.editor.handle_event(event)
             if acao == "menu":
@@ -490,13 +410,12 @@ class GameManager:
             elif acao == "continuar":
                 self.iniciar_run()
                 self.audio.play("menu")
-                return
-            elif acao == "toggle_fullscreen":
-                self.alternar_tela_cheia()
-                self.audio.play("menu")
+            elif acao == "alternar_som":
+                self.audio.set_muted(not self.audio.muted)
+                self.main_menu.som_ativo = not self.audio.muted
             elif acao == "sair":
                 self.sair_solicitado = True
-                return
+            return
 
         if self.state == GameState.HABILIDADES:
             acao = self.upgrade_menu.handle_event(event)
@@ -531,6 +450,11 @@ class GameManager:
             return
 
         if self.state == GameState.RUN:
+            # F8 leva à arena exclusiva do chefe sem precisar alcançar o portal.
+            if (event.type == pygame.KEYDOWN and event.key == pygame.K_F8
+                    and self.lan_role != "client"):
+                self._spawnar_chefe(forcar=True)  # atalho de teste, ignora a meta
+                return
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if self.upgrade_menu.HUD_RECT.collidepoint(event.pos):
                     self._abrir_habilidades()
@@ -573,6 +497,8 @@ class GameManager:
                 else:
                     self._atualizar_run(dt, keys, paused_local=True)
         elif self.state == GameState.PAUSADO and self.multiplayer:
+            # Multiplayer: pausa apenas os controles locais; a simulação do host
+            # continua para não congelar o outro jogador na rede.
             if self.lan_role == "client":
                 self._atualizar_cliente(dt)
             else:
@@ -584,18 +510,57 @@ class GameManager:
             if self.game_over_timer <= 0:
                 self.entrar_sala_evolucao()
 
-    def _atualizar_run(self, dt, keys, paused_local=False):
-        if self.aviso_chefe_timer > 0:
-            self.aviso_chefe_timer = max(0.0, self.aviso_chefe_timer - dt)
+    def _spawnar_chefe(self, forcar=False):
+        """Inicia encontro isolado; F8 pode forçar a entrada para depuração."""
+        if self.player is None:
+            return None
+        if not forcar and not self.level_manager.portal_disponivel(
+                self.run_state.mobs_derrotados):
+            return None
+        if not self.level_manager.entrar_arena_chefe():
+            return None
+        jogadores = [p for p in (self.player, self.remote_player) if p is not None]
+        self._retorno_arena = [(p.x, p.y) for p in jogadores]
+        self._inimigos_antes_arena = self.enemies
+        self.enemies = []
+        for indice, jogador in enumerate(jogadores):
+            jogador.x = 120 + indice * 70
+            jogador.y = settings.GROUND_Y - jogador.height
+            jogador.vx = 0
+            jogador.vy = 0
+            jogador.on_ground = True
+            jogador.projectiles.clear()
+        self.camera_x = 0.0
+        self.chefe_vitoria_timer = 0.0
+        chefe = self.level_manager.criar_chefe(self.player.x)
+        if chefe is not None:
+            self.enemies.append(chefe)
+            self.aviso_chefe_timer = 4.0
+        return chefe
 
-        # Trava a jogabilidade enquanto o terremoto acontece e exibe "O CHEFE ESTÁ AGUARDANDO"
-        if self.terremoto_timer > 0:
-            self.terremoto_timer = max(0.0, self.terremoto_timer - dt)
-            self.player.vx = 0
-            self.player.anim.atualizar(dt)
+    def _terminar_encontro_chefe(self):
+        """Volta à fase original sem misturar os mobs com a luta do chefe."""
+        if not self.level_manager.sair_arena_chefe():
             return
+        jogadores = [p for p in (self.player, self.remote_player) if p is not None]
+        for i, jogador in enumerate(jogadores):
+            if self._retorno_arena and i < len(self._retorno_arena):
+                jogador.x, jogador.y = self._retorno_arena[i]
+            jogador.vx = 0
+            jogador.vy = 0
+            jogador.projectiles.clear()
+        self.enemies = [e for e in self._inimigos_antes_arena if e.alive]
+        self._inimigos_antes_arena = []
+        self._retorno_arena = None
+        self.chefe_vitoria_timer = 0.0
+        self.mensagem_pos_chefe = 5.0
+        self.camera_x = max(0, min(self.player.x - settings.SCREEN_WIDTH // 2,
+                                   max(0, self.level_manager.limites[1] - settings.SCREEN_WIDTH)))
 
+    def _atualizar_run(self, dt, keys, paused_local=False):
         self.run_state.tempo_de_run += dt
+        self.aviso_chefe_timer = max(0, self.aviso_chefe_timer - dt)
+        self.mensagem_pos_chefe = max(0, self.mensagem_pos_chefe - dt)
 
         if paused_local:
             self.player.handle_actions({}, self.audio)
@@ -606,47 +571,34 @@ class GameManager:
             self.remote_player.handle_actions(self.remote_actions, self.audio)
             self.remote_player.update(dt, self.level_manager.plataformas, self.level_manager.limites)
 
-        if self.run_state.fase_atual == 1:
+        if self.level_manager.portal_atingido(
+                (self.player, self.remote_player), self.run_state.mobs_derrotados):
+            self._spawnar_chefe()
+
+        if not self.level_manager.arena_ativa:
             novo_inimigo = self.level_manager.atualizar_spawner(
-                dt,
-                self.run_state.tempo_de_run,
-                self.player.x,
-                self.enemies,
-                total_spawnados=self.run_state.inimigos_spawnados,
-                limite_total=self.run_state.meta_inimigos,
+                dt, self.run_state.tempo_de_run, self.player.x, self.enemies
             )
             if novo_inimigo:
                 self.enemies.append(novo_inimigo)
-                self.run_state.inimigos_spawnados += 1
 
         for inimigo in self.enemies:
             alvos = [p for p in (self.player, self.remote_player) if p is not None and not p.morto]
             if alvos:
-                alvo = min(
-                    alvos,
-                    key=lambda p: abs(p.rect.centerx - inimigo.rect.centerx)
-                    + abs(p.rect.centery - inimigo.rect.centery),
-                )
+                alvo = min(alvos, key=lambda p: abs(p.rect.centerx - inimigo.rect.centerx) + abs(p.rect.centery - inimigo.rect.centery))
                 inimigo.atualizar_ia(dt, alvo, self.level_manager.plataformas, self.level_manager.limites)
 
         self._resolver_combate()
         # Mantém o inimigo na cena até a animação de morte terminar de tocar.
         self.enemies = [e for e in self.enemies if not e.animacao_morte_terminou()]
 
-        if (
-            self.run_state.fase_atual == 1
-            and not self.terremoto_ativado
-            and self.run_state.inimigos_derrotados >= self.run_state.meta_inimigos
-        ):
-            self._ativar_evento_chefe()
-
-        # Entrar na porta pressionando E ou ENTER
-        if self.porta_rect and not paused_local:
-            jogadores = [p for p in (self.player, self.remote_player) if p is not None and not p.morto]
-            na_porta = any(j.rect.colliderect(self.porta_rect.inflate(16, 16)) for j in jogadores)
-            if na_porta and (keys[pygame.K_e] or keys[pygame.K_RETURN]):
-                self.avancar_fase_final()
-                return
+        if self.level_manager.arena_ativa:
+            if any(e.tipo == "chefe" and e.alive for e in self.enemies):
+                self.chefe_vitoria_timer = 0.0
+            else:
+                self.chefe_vitoria_timer += dt
+                if self.chefe_vitoria_timer >= 2.4:
+                    self._terminar_encontro_chefe()
 
         self._atualizar_camera(dt)
 
@@ -660,6 +612,12 @@ class GameManager:
             else:
                 self.encerrar_run()
 
+    def _registrar_eliminacao(self, inimigo):
+        """Credita a eliminação e soma para o portal apenas mobs normais."""
+        self.run_progression.registrar_kill_run(self.run_state)
+        if inimigo.tipo != "chefe":
+            self.run_state.mobs_derrotados += 1
+
     def _resolver_combate(self):
         jogadores = [p for p in (self.player, self.remote_player) if p is not None]
         for jogador in jogadores:
@@ -672,7 +630,7 @@ class GameManager:
                         jogador.atingidos_espada.add(inimigo.uid)
                         inimigo.receber_dano(jogador._dano_espada(), self.audio)
                         if not inimigo.alive:
-                            self.run_progression.registrar_kill_run(self.run_state)
+                            self._registrar_eliminacao(inimigo)
             for proj in jogador.projectiles:
                 if not proj.alive:
                     continue
@@ -681,7 +639,7 @@ class GameManager:
                         inimigo.receber_dano(proj.damage, self.audio)
                         proj.alive = False
                         if not inimigo.alive:
-                            self.run_progression.registrar_kill_run(self.run_state)
+                            self._registrar_eliminacao(inimigo)
                         break
 
         for inimigo in self.enemies:
@@ -714,66 +672,22 @@ class GameManager:
         elif self.state == GameState.SALA_EVOLUCAO:
             self.evolution_menu.draw(self.screen, self.progression, self.run_state)
 
-    def _sprite_plataforma(self, largura, altura, fase_final=False):
-        if not hasattr(self, "_cache_plataformas"):
-            self._cache_plataformas = {}
-            self._img_plat_normal = None
-            self._img_plat_boss = None
-            for attr, caminho in (
-                ("_img_plat_normal", getattr(settings, "PLATFORM_SPRITE", "")),
-                ("_img_plat_boss", getattr(settings, "BOSS_PLATFORM_SPRITE", "")),
-            ):
-                if caminho and os.path.exists(caminho):
-                    try:
-                        setattr(self, attr, pygame.image.load(caminho).convert_alpha())
-                    except (pygame.error, OSError):
-                        pass
-
-        base = (self._img_plat_boss or self._img_plat_normal) if fase_final else self._img_plat_normal
-        if base is None:
-            return None
-        chave = (fase_final, largura, altura)
-        if chave not in self._cache_plataformas:
-            self._cache_plataformas[chave] = pygame.transform.smoothscale(base, (largura, altura))
-        return self._cache_plataformas[chave]
-
     def _desenhar_run(self):
-        shake_x = random.randint(-7, 7) if self.terremoto_timer > 0 else 0
-        shake_y = random.randint(-5, 5) if self.terremoto_timer > 0 else 0
+        self.background.draw(self.screen, self.camera_x)
+        cam = int(self.camera_x)
+        if self.level_manager.arena_ativa:
+            self._desenhar_arena_chefe()
+        elif self.level_manager.portal_disponivel(self.run_state.mobs_derrotados):
+            self._desenhar_portal_chefe(cam)
 
-        fundo = self.boss_background if self.run_state.fase_atual == 2 else self.background
-        fundo.draw(self.screen, self.camera_x + shake_x)
-        cam = int(self.camera_x) - shake_x
-
-        fase_final = self.run_state.fase_atual == 2
-        cor_plat = settings.COLOR_BOSS_PLATFORM if fase_final else settings.COLOR_PLATFORM
-        cor_topo = settings.COLOR_BOSS_PLATFORM_TOP if fase_final else settings.COLOR_PLATFORM_TOP
         for plat in self.level_manager.plataformas:
-            # O chão de cada cenário é transparente para mostrar o piso da arte de fundo
-            if plat.y >= 520:
+            # O chão só existe para colisão; o terreno visível é a arte de fundo.
+            if plat is self.level_manager.chao:
                 continue
             r = plat.copy()
             r.x -= cam
-            r.y += shake_y
-            dr = srect(r)
-            sprite_plat = self._sprite_plataforma(dr.width, dr.height, fase_final=fase_final)
-            if sprite_plat is not None:
-                self.screen.blit(sprite_plat, dr.topleft)
-            else:
-                pygame.draw.rect(self.screen, cor_plat, dr)
-                pygame.draw.rect(self.screen, cor_topo, srect(r.x, r.y, r.width, 6))
-
-        if self.porta_rect:
-            pr = self.porta_rect.copy()
-            pr.x -= cam
-            pr.y += shake_y
-            dpr = srect(pr)
-            pygame.draw.rect(self.screen, (36, 14, 48), dpr, border_radius=sval(8))
-            pygame.draw.rect(self.screen, (220, 70, 95), dpr, width=sval(3), border_radius=sval(8))
-            pygame.draw.rect(self.screen, (150, 30, 55), dpr.inflate(-sval(14), -sval(14)), border_radius=sval(5))
-            fonte_p = font(14, bold=True)
-            lbl = fonte_p.render("[E] ENTRAR", True, (255, 225, 230))
-            self.screen.blit(lbl, lbl.get_rect(center=(dpr.centerx, dpr.top - sval(14))))
+            pygame.draw.rect(self.screen, settings.COLOR_PLATFORM, r)
+            pygame.draw.rect(self.screen, settings.COLOR_PLATFORM_TOP, (r.x, r.y, r.width, 6))
 
         for inimigo in self.enemies:
             inimigo.draw(self.screen, cam)
@@ -782,97 +696,145 @@ class GameManager:
         if self.multiplayer and self.remote_player:
             self.remote_player.draw(self.screen, cam)
             self._etiqueta_jogador(self.player, cam, "VOCÊ")
-            self._etiqueta_jogador(
-                self.remote_player,
-                cam,
-                "JOGADOR 2" if self.lan_role == "host" else "ANFITRIÃO",
-            )
-
+            self._etiqueta_jogador(self.remote_player, cam, "JOGADOR 2" if self.lan_role == "host" else "ANFITRIÃO")
         self.hud.draw(self.screen, self.player, self.run_state)
+        self._desenhar_meta_portal()
+        self._desenhar_barra_chefe()
+        if self.chefe_vitoria_timer > 0 and self.level_manager.arena_ativa:
+            self._banner_encontro("CHEFE DERROTADO!", (255, 228, 135))
+        elif self.mensagem_pos_chefe > 0:
+            self._banner_encontro("CHEFE DERROTADO - FASE LIBERADA", (255, 228, 135))
         if self.state == GameState.RUN:
             self.upgrade_menu.desenhar_botao_hud(self.screen, self.run_progression)
-
-        if self.aviso_chefe_timer > 0 or self.terremoto_timer > 0:
-            fonte_aviso = font(30, bold=True)
-            txt = fonte_aviso.render("O CHEFE ESTÁ AGUARDANDO", True, (255, 85, 95))
-            caixa = txt.get_rect(center=spt(settings.SCREEN_WIDTH // 2, 125))
-            fundo_msg = caixa.inflate(sval(36), sval(20))
-            s = pygame.Surface(fundo_msg.size, pygame.SRCALPHA)
-            s.fill((15, 5, 18, 215))
-            self.screen.blit(s, fundo_msg.topleft)
-            pygame.draw.rect(self.screen, (235, 70, 85), fundo_msg, width=sval(2), border_radius=sval(8))
-            self.screen.blit(txt, caixa)
-
         if self.em_teste:
-            fonte = font(16, bold=True)
+            fonte = pygame.font.SysFont("consolas", 16, bold=True)
             tag = fonte.render("MODO TESTE - ESC para voltar ao editor", True, (240, 230, 255))
-            caixa = pygame.Rect(
-                sval(12),
-                sval(settings.SCREEN_HEIGHT - 32),
-                tag.get_width() + sval(20),
-                sval(26),
-            )
-            pygame.draw.rect(self.screen, (48, 31, 75), caixa, border_radius=sval(5))
-            self.screen.blit(tag, (caixa.x + sval(10), caixa.y + sval(4)))
+            caixa = pygame.Rect(12, settings.SCREEN_HEIGHT - 32, tag.get_width() + 20, 26)
+            pygame.draw.rect(self.screen, (48, 31, 75), caixa, border_radius=5)
+            self.screen.blit(tag, (caixa.x + 10, caixa.y + 4))
+
+    def _banner_encontro(self, mensagem, cor):
+        fonte = pygame.font.SysFont("consolas", 25, bold=True)
+        texto = fonte.render(mensagem, True, cor)
+        rect = texto.get_rect(center=(settings.SCREEN_WIDTH // 2, 140))
+        pygame.draw.rect(self.screen, (34, 19, 48), rect.inflate(25, 17), border_radius=8)
+        self.screen.blit(texto, rect)
+
+    def _desenhar_meta_portal(self):
+        """Mostra o andamento da próxima meta sem cobrir os controles."""
+        if self.level_manager.arena_ativa:
+            return
+        atual = self.run_state.mobs_derrotados
+        meta = self.level_manager.proximo_portal_mobs
+        pronto = self.level_manager.portal_disponivel(atual)
+        mensagem = ("PORTAL ABERTO! ENCONTRE A ENTRADA" if pronto
+                    else f"PORTAL DO CHEFE: {atual}/{meta} MOBS")
+        fonte = pygame.font.SysFont("consolas", 15, bold=True)
+        texto = fonte.render(mensagem, True, (231, 196, 255) if pronto else (241, 229, 255))
+        caixa = pygame.Rect(14, 114, texto.get_width() + 20, 27)
+        pygame.draw.rect(self.screen, (31, 20, 49), caixa, border_radius=5)
+        self.screen.blit(texto, (caixa.x + 10, caixa.y + 5))
+
+    def _desenhar_portal_chefe(self, cam):
+        """Portal localizado ao final da fase (ou onde foi marcado no editor)."""
+        px = int(self.level_manager.portal_x - cam)
+        if not -90 <= px <= settings.SCREEN_WIDTH + 90:
+            return
+        topo = settings.GROUND_Y - 142
+        pygame.draw.ellipse(self.screen, (54, 22, 99), (px - 34, topo, 68, 142))
+        pygame.draw.ellipse(self.screen, (190, 85, 243), (px - 34, topo, 68, 142), 5)
+        pygame.draw.ellipse(self.screen, (132, 55, 201), (px - 21, topo + 17, 42, 111), 3)
+        for dy in (topo + 33, topo + 59, topo + 88):
+            pygame.draw.line(self.screen, (196, 133, 255), (px - 11, dy), (px + 11, dy + 4), 2)
+        fonte = pygame.font.SysFont("consolas", 14, bold=True)
+        texto = fonte.render("PORTAL DO CHEFE", True, (255, 231, 175))
+        self.screen.blit(texto, texto.get_rect(center=(px, topo - 13)))
+
+    def _desenhar_arena_chefe(self):
+        """Atmosfera visual própria: nenhuma plataforma da fase principal."""
+        filtro = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        filtro.fill((32, 5, 64, 152))
+        self.screen.blit(filtro, (0, 0))
+        # Colunas e runas demarcam o local separado da luta.
+        for x in (35, 225, 445, 665, 885):
+            pygame.draw.rect(self.screen, (43, 28, 75), (x, 205, 28, 260))
+            pygame.draw.rect(self.screen, (113, 61, 155), (x - 8, 204, 44, 14), 2)
+            pygame.draw.line(self.screen, (157, 90, 202), (x + 14, 220), (x + 14, 445), 2)
+        pygame.draw.circle(self.screen, (119, 59, 162), (settings.SCREEN_WIDTH // 2, 130), 74, 3)
+        fonte = pygame.font.SysFont("consolas", 18, bold=True)
+        texto = fonte.render("ARENA DO ESPECTRO", True, (246, 200, 255))
+        self.screen.blit(texto, texto.get_rect(center=(settings.SCREEN_WIDTH // 2, 175)))
+
+    def _desenhar_barra_chefe(self):
+        chefes = [e for e in self.enemies if e.tipo == "chefe" and e.alive]
+        if chefes:
+            chefe = chefes[0]
+            largura, altura = 360, 16
+            x = (settings.SCREEN_WIDTH - largura) // 2
+            y = 70
+            fonte = pygame.font.SysFont("consolas", 17, bold=True)
+            texto = fonte.render("ESPECTRO ANCESTRAL  -  CHEFE", True, (250, 216, 255))
+            self.screen.blit(texto, texto.get_rect(center=(settings.SCREEN_WIDTH // 2, y - 15)))
+            pygame.draw.rect(self.screen, (34, 19, 52), (x, y, largura, altura), border_radius=5)
+            pct = max(0.0, min(1.0, chefe.health / chefe.max_health))
+            if pct > 0:
+                pygame.draw.rect(self.screen, (166, 74, 211),
+                                 (x, y, max(1, int(largura * pct)), altura), border_radius=5)
+            pygame.draw.rect(self.screen, (231, 184, 255), (x, y, largura, altura), 2, border_radius=5)
+        if self.aviso_chefe_timer > 0 and chefes:
+            fonte = pygame.font.SysFont("consolas", 24, bold=True)
+            texto = fonte.render("UM CHEFE APARECEU!", True, (255, 199, 99))
+            self.screen.blit(texto, texto.get_rect(center=(settings.SCREEN_WIDTH // 2, 117)))
 
     def _etiqueta_jogador(self, player, cam, texto):
-        fonte = font(14, bold=True)
+        fonte = pygame.font.SysFont("consolas", 14, bold=True)
         render = fonte.render(texto, True, (245, 230, 255))
         x = player.rect.centerx - cam
-        self.screen.blit(render, render.get_rect(center=spt(x, player.rect.top - 17)))
+        self.screen.blit(render, render.get_rect(center=(x, player.rect.top - 17)))
 
     def _desenhar_lobby(self):
         self.background.draw(self.screen, 0)
-        fundo = pygame.Surface(sdim(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        fundo = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
         fundo.fill((9, 7, 22, 165))
         self.screen.blit(fundo, (0, 0))
-        titulo = font(37, bold=True)
-        fonte = font(20)
-        linhas = [
-            "MULTIPLAYER LAN",
-            self.lan_message,
-            "Esperando outro jogador..." if self.lan_role == "host" else "Aguardando resposta do servidor...",
-            "ESC - Cancelar e voltar ao menu",
-        ]
+        titulo = pygame.font.SysFont("consolas", 37, bold=True)
+        fonte = pygame.font.SysFont("consolas", 20)
+        linhas = ["MULTIPLAYER LAN", self.lan_message,
+                  "Esperando outro jogador..." if self.lan_role == "host" else "Aguardando resposta do servidor...",
+                  "ESC - Cancelar e voltar ao menu"]
         for idx, linha in enumerate(linhas):
             txt = (titulo if idx == 0 else fonte).render(linha, True, (244, 222, 255))
-            self.screen.blit(txt, txt.get_rect(center=spt(settings.SCREEN_WIDTH // 2, 150 + idx * 65)))
+            self.screen.blit(txt, txt.get_rect(center=(settings.SCREEN_WIDTH // 2, 150 + idx * 65)))
 
     def _desenhar_pausa(self):
-        overlay = pygame.Surface(sdim(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((6, 4, 19, 195))
         self.screen.blit(overlay, (0, 0))
 
         opcoes = self._opcoes_pausa()
-        painel = srect(0, 0, 410, 325 if self.em_teste else 270)
-        painel.center = spt(settings.SCREEN_WIDTH // 2, settings.SCREEN_HEIGHT // 2 + 9)
-        pygame.draw.rect(self.screen, (24, 17, 44), painel, border_radius=sval(14))
-        pygame.draw.rect(self.screen, (126, 87, 170), painel, width=sval(2), border_radius=sval(14))
+        painel = pygame.Rect(0, 0, 410, 325 if self.em_teste else 270)
+        painel.center = (settings.SCREEN_WIDTH // 2, settings.SCREEN_HEIGHT // 2 + 9)
+        pygame.draw.rect(self.screen, (24, 17, 44), painel, border_radius=14)
+        pygame.draw.rect(self.screen, (126, 87, 170), painel, width=2, border_radius=14)
 
-        titulo = font(38, bold=True)
+        titulo = pygame.font.SysFont("consolas", 38, bold=True)
         texto = titulo.render("PAUSADO", True, (246, 222, 255))
-        self.screen.blit(texto, texto.get_rect(center=(painel.centerx, painel.top + sval(48))))
+        self.screen.blit(texto, texto.get_rect(center=(settings.SCREEN_WIDTH // 2, painel.top + 48)))
 
-        fonte_botao = font(21, bold=True)
-        mouse = mouse_pos()
+        fonte_botao = pygame.font.SysFont("consolas", 21, bold=True)
+        mouse = settings.posicao_mouse_logica()
         for i, (_, rotulo, rect) in enumerate(opcoes):
             destaque = rect.collidepoint(mouse) or i == self.pausa_selecionado
             cor = (75, 43, 106) if destaque else (36, 27, 60)
             borda = (224, 151, 255) if destaque else (116, 83, 151)
-            drect = srect(rect)
-            pygame.draw.rect(self.screen, cor, drect, border_radius=sval(8))
-            pygame.draw.rect(self.screen, borda, drect, width=sval(2), border_radius=sval(8))
+            pygame.draw.rect(self.screen, cor, rect, border_radius=8)
+            pygame.draw.rect(self.screen, borda, rect, width=2, border_radius=8)
             texto = fonte_botao.render(rotulo, True, (246, 232, 255))
-            self.screen.blit(texto, texto.get_rect(center=drect.center))
+            self.screen.blit(texto, texto.get_rect(center=rect.center))
 
-        rodape = (
-            "Pausa local: a partida LAN continua"
-            if self.multiplayer
-            else "ESC: continuar  |  Setas + ENTER: selecionar"
-        )
-        fonte_pequena = font(14)
+        rodape = ("Pausa local: a partida LAN continua" if self.multiplayer
+                  else "ESC: continuar  |  Setas + ENTER: selecionar")
+        fonte_pequena = pygame.font.SysFont("consolas", 14)
         detalhe = fonte_pequena.render(rodape, True, (206, 189, 226))
-        self.screen.blit(
-            detalhe,
-            detalhe.get_rect(center=(painel.centerx, painel.bottom - sval(20))),
-        )
+        self.screen.blit(detalhe, detalhe.get_rect(center=(
+            settings.SCREEN_WIDTH // 2, painel.bottom - 20)))

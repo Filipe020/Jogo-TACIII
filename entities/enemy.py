@@ -12,7 +12,6 @@ from systems import physics, collision, combat
 from systems.animation import AnimationController
 from config import settings
 from config.animations import ENEMY_ANIMATIONS
-from systems.display import srect
 
 TIPOS = {
     "basico": dict(width=26, height=38, health=30, damage=10, speed=90,
@@ -23,6 +22,16 @@ TIPOS = {
                         cor=settings.ENEMY_COLORS["resistente"]),
     "distancia": dict(width=24, height=34, health=20, damage=8, speed=60,
                        cor=settings.ENEMY_COLORS["distancia"]),
+    "chefe": dict(width=76, height=94, health=300, damage=18, speed=85,
+                   cor=settings.ENEMY_COLORS["chefe"]),
+}
+
+
+# Compensação do padding transparente inferior de cada spritesheet.
+# A animação do ninja tem cerca de 4 px de padding sob os pés.
+ENEMY_FOOT_OFFSETS = {
+    "basico": 4, "rapido": 4, "resistente": 2,
+    "distancia": 1, "chefe": 0,
 }
 
 
@@ -38,13 +47,14 @@ class Enemy(Entity):
         self.damage = info["damage"]
         self.speed = info["speed"]
         self.cor = info["cor"]
-        self.ataque_cooldown = 1.1
+        self.ataque_cooldown = 1.6 if tipo == "chefe" else 1.1
+        self.contato_timer = 0.0
         self.ataque_timer = random.uniform(0, self.ataque_cooldown)
         self.projectiles = []
         self.jump_cooldown = 0.0
         self.jump_target_x = None
         # Impulso maior que o do ninja para perseguir em plataformas altas.
-        self.jump_power = {"rapido": 850, "resistente": 850, "basico": 870, "distancia": 820}[tipo]
+        self.jump_power = {"rapido": 850, "resistente": 850, "basico": 870, "distancia": 820, "chefe": 960}[tipo]
 
         #---Animação---
         info_anim = ENEMY_ANIMATIONS[tipo]
@@ -112,6 +122,7 @@ class Enemy(Entity):
             return
 
         self.jump_cooldown = max(0, self.jump_cooldown - dt)
+        self.contato_timer = max(0, self.contato_timer - dt)
         dist_x = player.rect.centerx - self.rect.centerx
         self.facing = 1 if dist_x >= 0 else -1
         meu_objetivo = None
@@ -147,10 +158,17 @@ class Enemy(Entity):
             self.jump_cooldown = 0.65
 
         self.ataque_timer += dt
-        if self.tipo == "distancia":
-            if self.ataque_timer >= self.ataque_cooldown and abs(dist_x) < 420 and abs(player.rect.centery - self.rect.centery) < 75:
+        if self.tipo in ("distancia", "chefe"):
+            alcance = 540 if self.tipo == "chefe" else 420
+            diferenca_altura = 160 if self.tipo == "chefe" else 75
+            if (self.ataque_timer >= self.ataque_cooldown and abs(dist_x) < alcance
+                    and abs(player.rect.centery - self.rect.centery) < diferenca_altura):
                 self._atirar()
                 self.ataque_timer = 0
+            if (self.tipo == "chefe" and self.contato_timer == 0
+                    and self.rect.colliderect(player.rect.inflate(8, 8))):
+                player.receber_dano(self.damage)
+                self.contato_timer = 1.2
         else:
             if self.ataque_timer >= self.ataque_cooldown and self.rect.colliderect(player.rect.inflate(6, 6)):
                 player.receber_dano(self.damage)
@@ -188,10 +206,20 @@ class Enemy(Entity):
         self.anim.atualizar(dt)
 
     def _atirar(self):
-        proj = Projectile(self.rect.centerx, self.rect.centery, self.facing,
-                           speed=300, damage=self.damage, from_player=False)
-        self.projectiles.append(proj)
-        self.anim_ataque_timer = 0.2
+        if self.tipo == "chefe":
+            # Duas rajadas de energia em alturas diferentes.
+            for altura in (-22, 22):
+                self.projectiles.append(Projectile(
+                    self.rect.centerx, self.rect.centery + altura,
+                    self.facing, speed=360, damage=12, from_player=False,
+                ))
+            self.anim_ataque_timer = 0.35
+        else:
+            self.projectiles.append(Projectile(
+                self.rect.centerx, self.rect.centery, self.facing,
+                speed=300, damage=self.damage, from_player=False,
+            ))
+            self.anim_ataque_timer = 0.2
 
     def receber_dano(self, dano, audio=None):
         if not self.alive:
@@ -212,15 +240,19 @@ class Enemy(Entity):
     def draw(self, surface, camera_x):
         frame_w, frame_h = self.frame_size
         draw_x = self.rect.centerx - camera_x - frame_w // 2
-        draw_y = self.rect.bottom - frame_h
+        # Os quadros dos mobs têm menos transparência sob os pés que os do
+        # jogador (aprox. 4 px). Compensa o padding de cada spritesheet para
+        # que todos pareçam pisar no mesmo terreno com hitboxes inalteradas.
+        padding_visual = ENEMY_FOOT_OFFSETS[self.tipo]
+        draw_y = self.rect.bottom - frame_h - padding_visual
         self.anim.desenhar(surface, draw_x, draw_y, self.facing)
 
-        if self.alive and self.health < self.max_health:
+        if self.alive and self.tipo != "chefe" and self.health < self.max_health:
             rect = self.rect
             rect.x -= camera_x
-            barra_bg = srect(rect.x, rect.y - 8, rect.width, 4)
+            barra_bg = pygame.Rect(rect.x, rect.y - 8, rect.width, 4)
             pct = max(0, self.health / self.max_health)
-            barra_fg = srect(rect.x, rect.y - 8, int(rect.width * pct), 4)
+            barra_fg = pygame.Rect(rect.x, rect.y - 8, int(rect.width * pct), 4)
             pygame.draw.rect(surface, settings.COLOR_HP_BG, barra_bg)
             pygame.draw.rect(surface, settings.COLOR_HP, barra_fg)
 

@@ -2,6 +2,8 @@
 
 import pygame
 
+from config import settings
+
 def rects_collide(a: pygame.Rect, b: pygame.Rect) -> bool:
     return a.colliderect(b)
 
@@ -44,6 +46,43 @@ def resolve_vertical(entity, platforms):
                 entity.vy = 0
                 entity.on_ground = True
                 break
+
+def resolve_vertical_one_way(entity, platforms, previous_bottom):
+    """Pouso em plataformas atravessáveis por baixo (jogador).
+
+    Aterrissa apenas durante a queda e quando os pés estavam em cima da
+    superfície no frame anterior. Isso permite saltar debaixo de plataformas
+    elevadas sem bater a cabeça ou ser bloqueado lateralmente.
+    """
+    entity.on_ground = False
+    if entity.vy < 0:
+        return
+
+    rect = entity.rect
+    tolerancia = 6
+    pouso = None
+    for plat in platforms:
+        sobrepoe_x = rect.right > plat.left and rect.left < plat.right
+        if not sobrepoe_x:
+            continue
+        # Plataformas elevadas deixam passar de baixo para cima. O chão
+        # principal, porém, deve sempre recolocar o jogador sobre o terreno,
+        # inclusive se um mapa antigo tiver um spawn salvo abaixo do piso.
+        piso_principal = (plat.top == settings.GROUND_Y
+                          and plat.bottom >= settings.SCREEN_HEIGHT)
+        if previous_bottom > plat.top + 0.5 and not piso_principal:
+            continue
+        # Considera tanto o cruzamento da plataforma quanto o encaixe quando
+        # o personagem já está parado no topo (diferenças de arredondamento).
+        if rect.bottom >= plat.top - tolerancia:
+            if pouso is None or plat.top < pouso:
+                pouso = plat.top
+
+    if pouso is not None:
+        entity.y = pouso - entity.height
+        entity.vy = 0
+        entity.on_ground = True
+
 
 def check_attack_hit(attack_rect, targets):
     """Retorna a lista de alvos atingidos por um retângulo de ataque"""

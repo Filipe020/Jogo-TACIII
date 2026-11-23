@@ -1,0 +1,30 @@
+SHADOW REBIRTH — CORREÇÃO DO SALTO E DO ALINHAMENTO
+
+O QUE MUDOU
+1. Impulso do ninja: 620 -> 860 (salto teórico de ~205 px).
+2. Plataformas elevadas são atravessáveis por baixo e pelas laterais pelo ninja:
+   agora é possível pular diretamente de baixo e pousar sobre elas.
+3. Os inimigos com spawn automático já aparecem na altura do chão invisível,
+   em vez de começar caindo do topo do mapa.
+4. Spawns salvos abaixo do chão no editor são corrigidos ao carregar.
+5. As animações dos mobs usam uma compensação de pixels transparentes para
+   alinhar visualmente os pés ao ninja.
+6. O chão invisível permanece na posição y=486; NÃO foi adicionado piso visível.
+7. Arena do chefe, portal de 10/20/30 abates, editor e multiplayer preservados.
+
+INSTALAÇÃO
+Extraia o patch na pasta do seu projeto, substituindo somente os arquivos
+correspondentes. Nao apague a pasta .git nem substitua arquivos nao listados.
+
+TESTE
+  python main.py
+- Inicie uma nova partida.
+- Pule debaixo da primeira plataforma e aterrisse sobre ela.
+- Confira se os inimigos estão com os pés alinhados ao chão.
+- Teste também a arena (F8) e uma fase do editor (F5).
+
+Para testes automáticos (com pygame instalado):
+  python -m unittest discover -s tests -p "test_pulo_alinhamento.py" -v
+
+NOTA
+O teste visual completo precisa ser feito na máquina com o Pygame instalado.

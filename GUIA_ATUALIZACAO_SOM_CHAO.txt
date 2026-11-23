@@ -1,0 +1,22 @@
+SHADOW REBIRTH — SOM NAS CONFIGURAÇÕES + CHÃO INVISÍVEL
+
+1. CONFIGURAÇÕES > Sons: LIGADOS / Sons: DESLIGADOS.
+   Clique no botão ou pressione M dentro de Configurações.
+   A escolha permanece salva em audio_settings.json, criado na primeira alteração.
+   Se a máquina não possui saída de áudio, o jogo continua funcionando.
+
+2. PISO VISUAL: nenhum retângulo de chão é desenhado na fase ou na arena.
+   O jogo mantém uma colisão invisível na altura Y=460, alinhada à arte do mapa.
+   Plataformas elevadas continuam visíveis e funcionais.
+   Mapas antigos contendo o retângulo de piso [0, 460, largura, 40]
+   são reconhecidos automaticamente e carregados sem essa plataforma.
+   Ao salvar no editor (Ctrl+S), o JSON passa a guardar apenas as plataformas reais.
+   As fases novas não incluem piso visual.
+
+INSTALAÇÃO
+- Extraia o ZIP de atualização na raiz do seu Jogo-TACIII.
+- Não substitua sua pasta .git.
+- Execute: python main.py
+- Abra Configurações e alterne os sons; depois entre em uma fase.
+
+OBS: as mudanças mantêm o jogo em tela cheia Full HD, o multiplayer e a arena do chefe.

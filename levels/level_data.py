@@ -11,7 +11,7 @@ from copy import deepcopy
 from config import settings
 from levels import level_01
 
-TIPOS_INIMIGOS = ("basico", "rapido", "resistente", "distancia")
+TIPOS_INIMIGOS = ("basico", "rapido", "resistente", "distancia", "chefe")
 SLOTS = (1, 2, 3)
 LARGURA_MIN = settings.SCREEN_WIDTH
 LARGURA_MAX = 12000
@@ -38,8 +38,8 @@ def mapa_novo():
     return {
         "nome": "Nova fase",
         "largura": 3600,
-        "spawn_jogador": [60, 400],
-        "plataformas": [[0, 460, 3600, 40]],
+        "spawn_jogador": [60, settings.GROUND_Y - 44],
+        "plataformas": [],  # O piso é uma colisão invisível, não uma plataforma do editor
         "inimigos": [],
         "spawn_automatico": True,
     }
@@ -71,6 +71,12 @@ def normalizar_mapa(mapa):
         if not (0 <= x < largura and 0 <= y < settings.SCREEN_HEIGHT and
                 0 < w <= largura - x and 0 < h <= settings.SCREEN_HEIGHT - y):
             raise ValueError(f"Plataforma fora dos limites: {p}")
+        # Compatibilidade com mapas antigos: retira o retângulo de piso
+        # sem afetar as plataformas elevadas criadas no editor.
+        # O piso da versão anterior estava em y=460. Não transformá-lo
+        # numa plataforma visível ao carregar fases salvas anteriormente.
+        if x == 0 and y in (460, settings.GROUND_Y) and w == largura and h >= 30:
+            continue
         plataformas.append([x, y, w, h])
 
     raw_inimigos = mapa.get("inimigos", [])

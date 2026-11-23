@@ -5,3 +5,5 @@ venv/
 savegame.json
 .vscode/
 .idea/
+audio_settings.json
+audio_settings.json.tmp

@@ -4,7 +4,6 @@ import math
 import os
 
 import pygame
-from systems.display import sval
 
 
 class IconLoader:
@@ -12,17 +11,16 @@ class IconLoader:
 
     @classmethod
     def carregar(cls, caminho, tamanho, cor_placeholder=(255, 255, 255), forma="circulo"):
-        tamanho_px = sval(tamanho)
-        chave = (caminho, tamanho_px)
+        chave = (caminho, tamanho)
         if chave in cls._cache:
             return cls._cache[chave]
 
         if os.path.exists(caminho):
             img = pygame.image.load(caminho).convert_alpha()
-            if img.get_size() != (tamanho_px, tamanho_px):
-                img = pygame.transform.smoothscale(img, (tamanho_px, tamanho_px))
+            if img.get_size() != (tamanho, tamanho):
+                img = pygame.transform.smoothscale(img, (tamanho, tamanho))
         else:
-            img = cls._gerar_placeholder(tamanho_px, cor_placeholder, forma)
+            img = cls._gerar_placeholder(tamanho, cor_placeholder, forma)
 
         cls._cache[chave] = img
         return img
@@ -31,16 +29,15 @@ class IconLoader:
     def _gerar_placeholder(tamanho, cor, forma):
         surf = pygame.Surface((tamanho, tamanho), pygame.SRCALPHA)
         centro = tamanho // 2
-        raio = max(2, tamanho // 2 - sval(2))
-        b = max(1, sval(2))
+        raio = max(2, tamanho // 2 - 2)
 
         if forma == "coracao":
             r = max(2, tamanho // 4)
-            pygame.draw.circle(surf, cor, (centro - r // 2, centro - r // 2 + sval(1)), r)
-            pygame.draw.circle(surf, cor, (centro + r // 2, centro - r // 2 + sval(1)), r)
+            pygame.draw.circle(surf, cor, (centro - r // 2, centro - r // 2 + 1), r)
+            pygame.draw.circle(surf, cor, (centro + r // 2, centro - r // 2 + 1), r)
             pygame.draw.polygon(
                 surf, cor,
-                [(b, centro - sval(1)), (tamanho - b, centro - sval(1)), (centro, tamanho - b)],
+                [(2, centro - 1), (tamanho - 2, centro - 1), (centro, tamanho - 2)],
             )
         elif forma == "estrela":
             pontos = []
@@ -52,10 +49,10 @@ class IconLoader:
         elif forma == "diamante":
             pygame.draw.polygon(
                 surf, cor,
-                [(centro, b), (tamanho - b, centro), (centro, tamanho - b), (b, centro)],
+                [(centro, 2), (tamanho - 2, centro), (centro, tamanho - 2), (2, centro)],
             )
-        else:
+        else:  # "circulo"
             pygame.draw.circle(surf, cor, (centro, centro), raio)
 
-        pygame.draw.rect(surf, (20, 20, 20), (0, 0, tamanho, tamanho), max(1, sval(1)), border_radius=sval(3))
+        pygame.draw.rect(surf, (20, 20, 20), (0, 0, tamanho, tamanho), 1, border_radius=3)
         return surf

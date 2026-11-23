@@ -22,11 +22,11 @@ ENEMY_ANIMATIONS = {
         "death": dict(file="death.png", frame_w=44, frame_h=56, frames=5, fps=8, loop=False),
     },
     "rapido": {
-        "idle": dict(file="idle.png", frame_w=38, frame_h=46, frames=4, fps=6, loop=True),
-        "walk": dict(file="walk.png", frame_w=38, frame_h=46, frames=6, fps=16, loop=True),
-        "attack": dict(file="attack.png", frame_w=38, frame_h=46, frames=3, fps=18, loop=False),
-        "hurt": dict(file="hurt.png", frame_w=38, frame_h=46, frames=2, fps=10, loop=False),
-        "death": dict(file="death.png", frame_w=38, frame_h=46, frames=5, fps=10, loop=False),
+        "idle": dict(file="idle.png", frame_w=48, frame_h=60, frames=4, fps=6, loop=True),
+        "walk": dict(file="walk.png", frame_w=48, frame_h=60, frames=6, fps=12, loop=True),
+        "attack": dict(file="attack.png", frame_w=48, frame_h=60, frames=3, fps=12, loop=False),
+        "hurt": dict(file="hurt.png", frame_w=48, frame_h=60, frames=2, fps=9, loop=False),
+        "death": dict(file="death.png", frame_w=48, frame_h=60, frames=6, fps=10, loop=False),
     },
     "resistente": {
         "idle": dict(file="idle.png", frame_w=50, frame_h=62, frames=4, fps=4, loop=True),
@@ -36,10 +36,20 @@ ENEMY_ANIMATIONS = {
         "death": dict(file="death.png", frame_w=50, frame_h=62, frames=6, fps=6, loop=False),
     },
     "distancia": {
-        "idle": dict(file="idle.png", frame_w=40, frame_h=50, frames=4, fps=5, loop=True),
-        "walk": dict(file="walk.png", frame_w=40, frame_h=50, frames=6, fps=10, loop=True),
-        "attack": dict(file="attack.png", frame_w=40, frame_h=50, frames=3, fps=12, loop=False),
-        "hurt": dict(file="hurt.png", frame_w=40, frame_h=50, frames=2, fps=10, loop=False),
-        "death": dict(file="death.png", frame_w=40, frame_h=50, frames=5, fps=8, loop=False),
+        # Robô atirador recortado da folha de sprites fornecida pelo usuário.
+        "idle": dict(file="idle.png", frame_w=96, frame_h=72, frames=5, fps=6, loop=True),
+        "walk": dict(file="walk.png", frame_w=96, frame_h=72, frames=8, fps=11, loop=True),
+        "attack": dict(file="attack.png", frame_w=96, frame_h=72, frames=6, fps=13, loop=False),
+        "hurt": dict(file="hurt.png", frame_w=96, frame_h=72, frames=3, fps=10, loop=False),
+        "death": dict(file="death.png", frame_w=96, frame_h=72, frames=5, fps=8, loop=False),
     },
+}
+
+# Chefe espectral — cinco animações com o fantasma maior da arte enviada.
+ENEMY_ANIMATIONS["chefe"] = {
+    "idle": dict(file="idle.png", frame_w=124, frame_h=136, frames=4, fps=5, loop=True),
+    "walk": dict(file="walk.png", frame_w=124, frame_h=136, frames=4, fps=7, loop=True),
+    "attack": dict(file="attack.png", frame_w=124, frame_h=136, frames=3, fps=10, loop=False),
+    "hurt": dict(file="hurt.png", frame_w=124, frame_h=136, frames=2, fps=10, loop=False),
+    "death": dict(file="death.png", frame_w=124, frame_h=136, frames=6, fps=8, loop=False),
 }

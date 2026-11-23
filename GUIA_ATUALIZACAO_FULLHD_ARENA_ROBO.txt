@@ -1,0 +1,25 @@
+SHADOW REBIRTH - CORRECOES DE INTERFACE, NOVO INIMIGO E BOSS ARENA
+
+CORRECOES:
+  - Editor: botões F1/F2/F3 com largura suficiente para os textos.
+  - Inimigo distancia: animações do robô enviado (idle, walk, attack,
+    hurt, death). As imagens estão em assets/sprites/enemies/distancia/.
+  - Chefão: portal no final da fase conduz a uma arena separada.
+    Inimigos comuns não entram nessa arena. Após a vitória, o jogador
+    retorna à fase anterior. O chefe aparece uma vez por partida.
+  - F8: entrar na arena imediatamente para testar.
+  - Ferramenta 7 do editor: marca o portal da arena.
+  - Jogo Full HD: tela cheia 1920x1080 em monitores compatíveis; em outros
+    monitores usa tela cheia nativa. F11: alterna janela/tela cheia.
+
+INSTALACAO NO REPOSITORIO EXISTENTE:
+  1. Faça uma cópia de segurança dos seus arquivos ou faça um commit.
+  2. Extraia o ZIP com SOMENTE AS ALTERACOES na pasta Jogo-TACIII.
+  3. Mantenha a pasta .git original, seu savegame.json e mapas .json.
+  4. Na pasta raiz do projeto, rode:
+     pip install -r requirements.txt
+     python main.py
+  5. Para testar diretamente a arena, aperte F8.
+
+AVISO: a tela do jogo usa uma resolução interna de 960x540 que é ampliada
+para 1920x1080; isso mantém o layout e a física originais.

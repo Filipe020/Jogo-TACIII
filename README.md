@@ -138,3 +138,36 @@ python main.py
 No menu principal clique em **Novo Jogo**, derrote inimigos e use `H` para evoluir.
 Volte ao menu e clique em **Novo Jogo** para conferir o reinício dos níveis. A opção
 **Continuar** preserva o estado salvo.
+
+## Fantasma roxo e chefe espectral (atualização)
+
+- Os inimigos **rápidos** (antes quadrados amarelos) agora usam a arte do fantasma roxo com animações de andar/flutuar, ataque, dano e morte. Os arquivos ficam em `assets/sprites/enemies/rapido/`.
+- O chefe **Espectro Ancestral** possui 300 pontos de vida, contato perigoso, rajadas duplas e uma barra de vida no topo da tela. Ele utiliza `assets/sprites/enemies/chefe/`.
+- **Nova arena do chefe:** a luta não acontece mais junto aos inimigos comuns. Um portal roxo aparece perto do fim da fase; atravesse-o para entrar em uma arena isolada. Os mobs normais ficam fora da luta e a fase retorna depois da vitória.
+- **F8 durante a partida** entra diretamente na arena, para testes, sem precisar atravessar o portal. Não inicia uma segunda luta na mesma run; em LAN use F8 no anfitrião.
+- **Editor de fases: tecla `7`** define a **posição do portal do chefe**, não o local de spawn do chefe na fase normal. `Ctrl+S` salva e `F5` testa.
+- O chefe sempre aparece somente dentro da arena; não existe mais surgimento por tempo ou por quantidade de inimigos derrotados.
+
+**Direitos da arte:** a imagem `Ghost2.jpg` fornecida pelo usuário exibe marcas de Dreamstime. Os sprites foram adaptados dessa imagem. Verifique a licença/autorização antes de distribuir ou publicar o jogo com esses recursos visuais.
+
+## Atualização Full HD + robô atirador + arena exclusiva
+
+- O jogo inicia em **tela cheia Full HD (1920×1080)** quando o monitor suporta essa resolução, ou em tela cheia na resolução nativa caso não suporte. A lógica continua em 960×540 e é ampliada, preservando o layout e os cliques nos menus. **F11** alterna entre janela e tela cheia.
+- No editor, os botões **F1 FASE 1 / F2 FASE 2 / F3 FASE 3** foram ampliados para não cortar textos.
+- O inimigo de tipo `distancia` agora usa as animações do robô do spritesheet `RoboAT1.jpg` (idle, walk, attack, hurt, death) em `assets/sprites/enemies/distancia/`.
+- O chefe é enfrentado somente na sua **arena exclusiva**: basta chegar ao portal no fim da fase (ou apertar **F8** para testar). Os inimigos normais são separados durante a luta; ao derrotar o chefe você retorna à fase e o portal não reabre na mesma run.
+- Em LAN o computador anfitrião determina a entrada na arena e sincroniza o cenário com o outro jogador.
+
+Para instalar em um clone Git existente, utilize `ShadowRebirth_patch_fullhd_arena_robo.zip` e substitua somente os arquivos contidos nele. Mantenha `.git` e seus arquivos de save/fases personalizadas.
+
+## Configurações de som e piso invisível
+
+Em **Configurações**, clique no botão **Sons: LIGADOS / DESLIGADOS** ou pressione
+**M** para ligar/desligar o áudio. A escolha é mantida no arquivo
+`audio_settings.json` (ignorado pelo Git).
+
+O piso da fase é uma colisão invisível na altura Y=460, alinhada à imagem de
+fundo: **não existe mais um retângulo de chão desenhado**. As plataformas aéreas
+permanecem visíveis. O editor cria fases sem piso explícito, e fases antigas com
+o retângulo contínuo de chão são migradas automaticamente ao carregar; salve
+com Ctrl+S para atualizar o arquivo JSON. O mesmo vale para a arena do chefe.

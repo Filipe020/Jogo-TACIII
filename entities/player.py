@@ -12,7 +12,6 @@ from systems import physics, collision, combat
 from systems.animation import AnimationController
 from config import settings
 from config.animations import PLAYER_ANIMATIONS, PLAYER_FRAME_SIZE
-from systems.display import srect, sval
 
 class Player(Entity):
     WIDTH = 28
@@ -152,15 +151,17 @@ class Player(Entity):
                 self.shuriken_regen_timer = 0.0
                 self.shurikens += 1
 
-        #Movimento horizontal
+        # Plataformas elevadas são atravessáveis por baixo e pelas laterais;
+        # só o pouso sobre a superfície bloqueia o movimento.
         self.x = physics.integrate_position(self.x, self.vx, dt)
-        collision.resolve_horizontal(self, platforms)
         collision.clamp_to_bounds(self, level_bounds[0], level_bounds[1])
 
-        #Movimento vertical
+        # Guarda a altura anterior dos pés para detectar pousos mesmo quando
+        # um frame cruza a superfície inteira (sem travar ao subir por baixo).
+        previous_bottom = self.y + self.height
         self.vy = physics.apply_gravity(self.vy, dt)
         self.y = physics.integrate_position(self.y, self.vy, dt)
-        collision.resolve_vertical(self, platforms)
+        collision.resolve_vertical_one_way(self, platforms, previous_bottom)
 
         for proj in self.projectiles:
             proj.update(dt)
@@ -223,7 +224,7 @@ class Player(Entity):
         if hitbox:
             r = hitbox.copy()
             r.x -= camera_x
-            pygame.draw.rect(surface, settings.COLOR_SWORD, srect(r), sval(2), border_radius=sval(3))
+            pygame.draw.rect(surface, settings.COLOR_SWORD, r, 2, border_radius=3)
 
         for proj in self.projectiles:
             proj.draw(surface, camera_x)

@@ -1,9 +1,9 @@
 """Painel de habilidades disponível durante a partida (H ou botão na HUD)."""
 
 import pygame
+
 from config import settings
 from systems.progression import UPGRADE_DEFS
-from systems.display import font, mouse_pos, sdim, spt, srect, sval
 
 
 class UpgradeMenu:
@@ -33,10 +33,10 @@ class UpgradeMenu:
 
     def _fontes(self):
         if self.font_titulo is None:
-            self.font_titulo = font(29, bold=True)
-            self.font_item = font(19, bold=True)
-            self.font_menor = font(15)
-            self.font_botao = font(16, bold=True)
+            self.font_titulo = pygame.font.SysFont("consolas", 29, bold=True)
+            self.font_item = pygame.font.SysFont("consolas", 19, bold=True)
+            self.font_menor = pygame.font.SysFont("consolas", 15)
+            self.font_botao = pygame.font.SysFont("consolas", 16, bold=True)
 
     @staticmethod
     def fechar_rect():
@@ -52,6 +52,7 @@ class UpgradeMenu:
         return pygame.Rect(710, linha.y + 5, 140, 37)
 
     def handle_event(self, event):
+        """Devolve 'fechar' ou a chave de uma habilidade que se quer comprar."""
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_ESCAPE, pygame.K_h):
                 return "fechar"
@@ -72,59 +73,58 @@ class UpgradeMenu:
 
     def desenhar_botao_hud(self, surface, progression):
         self._fontes()
-        destacado = self.HUD_RECT.collidepoint(mouse_pos())
-        rect = srect(self.HUD_RECT)
-        pygame.draw.rect(surface, (83, 45, 115) if destacado else (40, 26, 65), rect, border_radius=sval(8))
-        pygame.draw.rect(surface, (230, 160, 255) if destacado else (144, 99, 185), rect, sval(2), border_radius=sval(8))
+        mouse = settings.posicao_mouse_logica()
+        destacado = self.HUD_RECT.collidepoint(mouse)
+        rect = self.HUD_RECT
+        pygame.draw.rect(surface, (83, 45, 115) if destacado else (40, 26, 65), rect, border_radius=8)
+        pygame.draw.rect(surface, (230, 160, 255) if destacado else (144, 99, 185), rect, 2, border_radius=8)
         label = self.font_botao.render("HABILIDADES [H]", True, (245, 233, 255))
         surface.blit(label, label.get_rect(center=rect.center))
         pontos = self.font_menor.render(f"Pontos: {progression.pontos_disponiveis}", True, (250, 220, 170))
-        surface.blit(pontos, pontos.get_rect(topright=(rect.right, rect.bottom + sval(7))))
+        surface.blit(pontos, pontos.get_rect(topright=(rect.right, rect.bottom + 7)))
 
     def draw(self, surface, progression, multiplayer=False):
         self._fontes()
-        mascara = pygame.Surface(sdim(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        mascara = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
         mascara.fill((8, 6, 20, 215))
         surface.blit(mascara, (0, 0))
 
-        painel = srect(77, 36, 806, 464)
-        pygame.draw.rect(surface, (25, 18, 46), painel, border_radius=sval(13))
-        pygame.draw.rect(surface, (135, 91, 179), painel, width=sval(2), border_radius=sval(13))
+        painel = pygame.Rect(77, 36, 806, 464)
+        pygame.draw.rect(surface, (25, 18, 46), painel, border_radius=13)
+        pygame.draw.rect(surface, (135, 91, 179), painel, width=2, border_radius=13)
 
         titulo = self.font_titulo.render("HABILIDADES", True, (243, 218, 255))
-        surface.blit(titulo, spt(104, 59))
+        surface.blit(titulo, (104, 59))
         pontos = self.font_item.render(f"Pontos: {progression.pontos_disponiveis}", True, (255, 215, 147))
-        surface.blit(pontos, spt(510, 69))
+        surface.blit(pontos, (510, 69))
 
-        fechar = srect(self.fechar_rect())
-        pygame.draw.rect(surface, (74, 36, 78), fechar, border_radius=sval(7))
-        pygame.draw.rect(surface, (194, 141, 213), fechar, sval(2), border_radius=sval(7))
+        fechar = self.fechar_rect()
+        pygame.draw.rect(surface, (74, 36, 78), fechar, border_radius=7)
+        pygame.draw.rect(surface, (194, 141, 213), fechar, 2, border_radius=7)
         cruz = self.font_item.render("X", True, (250, 230, 255))
         surface.blit(cruz, cruz.get_rect(center=fechar.center))
 
-        mpos = mouse_pos()
         for idx, chave in enumerate(self.chaves):
             info = UPGRADE_DEFS[chave]
             lvl = progression.niveis[chave]
             maximo = lvl >= info["max_nivel"]
             pode = progression.pode_comprar(chave)
-            lrect = self.linha_rect(idx)
-            rect = srect(lrect)
-            destaque = idx == self.selecionado or lrect.collidepoint(mpos)
+            rect = self.linha_rect(idx)
+            destaque = idx == self.selecionado or rect.collidepoint(settings.posicao_mouse_logica())
             cor_linha = (65, 45, 89) if destaque else (36, 29, 61)
-            pygame.draw.rect(surface, cor_linha, rect, border_radius=sval(7))
+            pygame.draw.rect(surface, cor_linha, rect, border_radius=7)
             if destaque:
-                pygame.draw.rect(surface, (132, 95, 165), rect, max(1, sval(1)), border_radius=sval(7))
+                pygame.draw.rect(surface, (132, 95, 165), rect, 1, border_radius=7)
 
             nome = self.font_item.render(f"{info['nome']}  Nv {lvl}/{info['max_nivel']}", True, (241, 225, 255))
             desc = self.font_menor.render(info["descricao"], True, (181, 176, 202))
-            surface.blit(nome, (rect.x + sval(13), rect.y + sval(4)))
-            surface.blit(desc, (rect.x + sval(13), rect.y + sval(27)))
+            surface.blit(nome, (rect.x + 13, rect.y + 4))
+            surface.blit(desc, (rect.x + 13, rect.y + 27))
 
-            button = srect(self.melhorar_rect(idx))
+            button = self.melhorar_rect(idx)
             button_cor = (80, 53, 114) if pode else (49, 45, 61)
-            pygame.draw.rect(surface, button_cor, button, border_radius=sval(6))
-            pygame.draw.rect(surface, (205, 144, 246) if pode else (99, 95, 109), button, max(1, sval(1)), border_radius=sval(6))
+            pygame.draw.rect(surface, button_cor, button, border_radius=6)
+            pygame.draw.rect(surface, (205, 144, 246) if pode else (99, 95, 109), button, 1, border_radius=6)
             label = ("NÍVEL MÁX." if maximo else f"EVOLUIR ({progression.custo_proximo_nivel(chave)})")
             txt = self.font_botao.render(label, True, (247, 232, 255) if pode else (144, 139, 154))
             surface.blit(txt, txt.get_rect(center=button.center))
@@ -132,7 +132,7 @@ class UpgradeMenu:
         instrucoes = ("LAN: pontos e níveis compartilhados | H / ESC para voltar" if multiplayer
                       else "↑ / ↓: selecionar  ENTER: evoluir  H / ESC: voltar")
         texto = self.font_menor.render(instrucoes, True, (200, 190, 220))
-        surface.blit(texto, texto.get_rect(center=spt(settings.SCREEN_WIDTH // 2, 466)))
+        surface.blit(texto, texto.get_rect(center=(settings.SCREEN_WIDTH // 2, 466)))
         if self.mensagem_timer > 0 and self.mensagem:
             texto = self.font_menor.render(self.mensagem, True, (255, 219, 159))
-            surface.blit(texto, texto.get_rect(center=spt(settings.SCREEN_WIDTH // 2, 116)))
+            surface.blit(texto, texto.get_rect(center=(settings.SCREEN_WIDTH // 2, 116)))

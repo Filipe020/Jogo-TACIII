@@ -7,34 +7,37 @@ import pygame
 
 from config import settings
 from game.game_manager import GameManager
-from systems.display import scale_event
 
 
 def main():
     pygame.init()
     pygame.display.set_caption(settings.TITLE)
-    flags = pygame.FULLSCREEN | pygame.SCALED
-    screen = pygame.display.set_mode((settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT), flags)
+    # Full HD físico + canvas virtual para manter a interface e os controles.
+    from systems.fullscreen import FullscreenCanvas
+    video = FullscreenCanvas()
     clock = pygame.time.Clock()
-
-    gerenciador = GameManager(screen)
+    gerenciador = GameManager(video.canvas)
 
     rodando = True
     while rodando:
         dt = clock.tick(settings.FPS) / 1000.0
-        dt = min(dt, 0.05)
+        dt = min(dt, 0.05)  # evita saltos grandes de física após travamentos
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 rodando = False
             else:
-                gerenciador.handle_event(scale_event(event))
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+                    video.toggle_fullscreen()
+                else:
+                    gerenciador.handle_event(video.map_event(event))
 
         if gerenciador.sair_solicitado:
             rodando = False
             break
         gerenciador.update(dt)
         gerenciador.draw()
+        video.present()
         pygame.display.flip()
 
     if gerenciador.lan is not None:

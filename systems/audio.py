@@ -1,7 +1,10 @@
 """Gerenciador de áudio. Ainda NÃO tem aúdio, deve procurar baixar e colocar """
 
 import os
+import json
 import pygame
+
+from config import settings
 
 try:
     import numpy as np
@@ -13,6 +16,7 @@ class AudioManager:
     def __init__(self):
         self.enabled = False
         self.sounds = {}
+        self.muted = self._ler_som_desligado()
         try:
             pygame.mixer.init()
             self.enabled = True
@@ -21,6 +25,37 @@ class AudioManager:
 
         if self.enabled and NUMPY_OK:
             self._gerar_sons()
+
+    @staticmethod
+    def _ler_som_desligado():
+        try:
+            with open(settings.SOUND_SETTINGS_FILE, "r", encoding="utf-8") as arquivo:
+                dados = json.load(arquivo)
+            return dados.get("som_desligado", False) is True if isinstance(dados, dict) else False
+        except (OSError, ValueError, TypeError):
+            return False
+
+    def set_muted(self, muted):
+        """Liga/desliga efeitos e música imediatamente e mantém a escolha no disco."""
+        self.muted = bool(muted)
+        if self.muted and self.enabled:
+            try:
+                pygame.mixer.stop()
+                pygame.mixer.music.stop()
+            except pygame.error:
+                pass
+        temporario = settings.SOUND_SETTINGS_FILE + ".tmp"
+        try:
+            with open(temporario, "w", encoding="utf-8") as arquivo:
+                json.dump({"som_desligado": self.muted}, arquivo)
+            os.replace(temporario, settings.SOUND_SETTINGS_FILE)
+        except OSError:
+            # Falta de permissão para gravar não impede o funcionamento.
+            try:
+                if os.path.exists(temporario):
+                    os.remove(temporario)
+            except OSError:
+                pass
 
     def _tom(self, freq=440, duracao=0.08, volume=0.25):
         sample_rate = 44100
@@ -48,7 +83,7 @@ class AudioManager:
             self.sounds = {}
 
     def play(self, nome):
-        if not self.enabled:
+        if not self.enabled or self.muted:
             return
         som = self.sounds.get(nome)
         if som:

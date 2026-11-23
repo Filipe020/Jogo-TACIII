@@ -6,7 +6,7 @@ import pygame
 from game.game_state import GameState, RunState
 from game.level_manager import LevelManager
 from entities.player import Player
-from entities.enemy import Enemy
+from entities.enemy import Enemy, BOSS_TYPES
 from entities.projectile import Projectile
 from network.lan import LANPeer, PORT, local_ip
 from levels.level_data import carregar_slot, mapa_padrao, normalizar_mapa
@@ -26,7 +26,6 @@ from config import settings
 
 class GameManager:
     def __init__(self, screen):
-
         pasta_plat = os.path.join(settings.BASE_DIR, "assets", "sprites", "platform")
         self.platform_img = None
         if os.path.isdir(pasta_plat):
@@ -267,6 +266,7 @@ class GameManager:
             "kills": self.run_state.inimigos_derrotados,
             "mobs_kills": self.run_state.mobs_derrotados,
             "portal_target": self.level_manager.proximo_portal_mobs,
+            "boss_index": self.level_manager.boss_index,
             "boss_arena": self.level_manager.arena_ativa,
             "boss_victory_time": round(self.chefe_vitoria_timer, 2),
             "upgrades": self.run_progression.estado_rede(),
@@ -281,6 +281,8 @@ class GameManager:
                     "health": e.health,
                     "alive": e.alive,
                     "anim": e.anim.estado_atual,
+                    "pulse_charge": round(e.pulso_carga, 2),
+                    "pulse_effect": round(e.pulso_efeito, 2),
                     "projectiles": [self._dados_proj(p) for p in e.projectiles if p.alive],
                 }
                 for e in self.enemies
@@ -324,9 +326,14 @@ class GameManager:
         self._aplicar_player(self.player, dados["players"][1])
         self.run_state.inimigos_derrotados = int(dados["kills"])
         self.run_state.mobs_derrotados = max(0, int(dados.get("mobs_kills", dados["kills"])))
+        # O servidor é a referência para as metas, inclusive depois da arena.
         self.level_manager.proximo_portal_mobs = max(
             10, int(dados.get("portal_target", self.level_manager.proximo_portal_mobs))
         )
+        # Mesmo após várias arenas, o cliente precisa exibir o chefe certo.
+        self.level_manager.boss_index = int(
+            dados.get("boss_index", self.level_manager.boss_index)
+        ) % len(self.level_manager.boss_order)
         self.run_progression.receber_estado_remoto(dados.get("upgrades"))
         self._aplicar_melhorias_jogadores()
         vivos = {}
@@ -341,6 +348,8 @@ class GameManager:
             e.health = float(item["health"])
             e.alive = bool(item["alive"])
             e.anim.trocar_estado(item["anim"])
+            e.pulso_carga = max(0.0, float(item.get("pulse_charge", 0.0)))
+            e.pulso_efeito = max(0.0, float(item.get("pulse_effect", 0.0)))
             e.projectiles = self._restaurar_proj(item["projectiles"], False)
             vivos[uid] = e
         self.client_enemies = vivos
@@ -645,13 +654,15 @@ class GameManager:
                     key=lambda p: abs(p.rect.centerx - inimigo.rect.centerx)
                     + abs(p.rect.centery - inimigo.rect.centery),
                 )
-                inimigo.atualizar_ia(dt, alvo, self.level_manager.plataformas, self.level_manager.limites)
+                inimigo.atualizar_ia(
+                    dt, alvo, self.level_manager.plataformas, self.level_manager.limites, alvos
+                )
 
         self._resolver_combate()
         self.enemies = [e for e in self.enemies if not e.animacao_morte_terminou()]
 
         if self.level_manager.arena_ativa:
-            if any(e.tipo == "chefe" and e.alive for e in self.enemies):
+            if any(e.tipo in BOSS_TYPES and e.alive for e in self.enemies):
                 self.chefe_vitoria_timer = 0.0
             else:
                 self.chefe_vitoria_timer += dt
@@ -673,7 +684,7 @@ class GameManager:
     def _registrar_eliminacao(self, inimigo):
         """Credita a eliminação e soma para o portal apenas mobs normais."""
         self.run_progression.registrar_kill_run(self.run_state)
-        if inimigo.tipo != "chefe":
+        if inimigo.tipo not in BOSS_TYPES:
             self.run_state.mobs_derrotados += 1
 
     def _resolver_combate(self):
@@ -862,25 +873,40 @@ class GameManager:
             sval(3),
         )
         fonte = scaled_font(18, bold=True)
-        texto = fonte.render("ARENA DO ESPECTRO", True, (246, 200, 255))
+        nome = self.level_manager.nome_chefe_atual()
+        texto = fonte.render(f"ARENA DE {nome}", True, (246, 200, 255))
         self.screen.blit(texto, texto.get_rect(center=spt(settings.SCREEN_WIDTH // 2, 175)))
 
     def _desenhar_barra_chefe(self):
-        chefes = [e for e in self.enemies if e.tipo == "chefe" and e.alive]
+        chefes = [e for e in self.enemies if e.tipo in BOSS_TYPES and e.alive]
         if chefes:
             chefe = chefes[0]
             largura, altura = 360, 16
             x = (settings.SCREEN_WIDTH - largura) // 2
             y = 70
+            nomes = {
+                "chefe": "ESPECTRO ANCESTRAL",
+                "boss_basico": "NECROZUMBI TITAN",
+                "boss_distancia": "SENTINELA MECANICO",
+                "boss_resistente": "ESPECTRO DAS CINZAS",
+                "boss_samurai": "SAMURAI DO CREPUSCULO",
+            }
+            cores = {
+                "chefe": (166, 74, 211),
+                "boss_basico": (180, 96, 96),
+                "boss_distancia": (102, 213, 160),
+                "boss_resistente": (187, 218, 250),
+                "boss_samurai": (214, 95, 132),
+            }
             fonte = scaled_font(17, bold=True)
-            texto = fonte.render("ESPECTRO ANCESTRAL  -  CHEFE", True, (250, 216, 255))
+            texto = fonte.render(f"{nomes.get(chefe.tipo, 'CHEFE')}  -  CHEFE", True, (250, 216, 255))
             self.screen.blit(texto, texto.get_rect(center=spt(settings.SCREEN_WIDTH // 2, y - 15)))
             pygame.draw.rect(self.screen, (34, 19, 52), srect(x, y, largura, altura), border_radius=sval(5))
             pct = max(0.0, min(1.0, chefe.health / chefe.max_health))
             if pct > 0:
                 pygame.draw.rect(
                     self.screen,
-                    (166, 74, 211),
+                    cores.get(chefe.tipo, (166, 74, 211)),
                     srect(x, y, max(1, int(largura * pct)), altura),
                     border_radius=sval(5),
                 )

@@ -11,7 +11,24 @@ from copy import deepcopy
 from config import settings
 from levels import level_01
 
-TIPOS_INIMIGOS = ("basico", "rapido", "resistente", "distancia", "chefe")
+# "chefe" continua sendo o marcador do portal da arena. Para testes diretos no
+# editor, os cinco chefes podem ser colocados como marcadores próprios.
+BOSS_EDITOR_MARKERS = {
+    "boss_editor_1": "chefe",
+    "boss_editor_2": "boss_basico",
+    "boss_editor_3": "boss_distancia",
+    "boss_editor_4": "boss_resistente",
+    "boss_editor_5": "boss_samurai",
+}
+BOSS_EDITOR_NAMES = {
+    "boss_editor_1": "Boss 1 - Fantasma",
+    "boss_editor_2": "Boss 2 - Zumbi",
+    "boss_editor_3": "Boss 3 - Robo",
+    "boss_editor_4": "Boss 4 - Espectro",
+    "boss_editor_5": "Boss 5 - Samurai",
+}
+BOSS_EDITOR_TYPES = tuple(BOSS_EDITOR_MARKERS.keys())
+TIPOS_INIMIGOS = ("basico", "rapido", "resistente", "distancia", "chefe") + BOSS_EDITOR_TYPES
 SLOTS = (1, 2, 3)
 LARGURA_MIN = settings.SCREEN_WIDTH
 LARGURA_MAX = 12000
@@ -72,9 +89,6 @@ def normalizar_mapa(mapa):
                 0 < w <= largura - x and 0 < h <= settings.SCREEN_HEIGHT - y):
             raise ValueError(f"Plataforma fora dos limites: {p}")
         # Compatibilidade com mapas antigos: retira o retângulo de piso
-        # sem afetar as plataformas elevadas criadas no editor.
-        # O piso da versão anterior estava em y=460. Não transformá-lo
-        # numa plataforma visível ao carregar fases salvas anteriormente.
         if x == 0 and y in (460, settings.GROUND_Y) and w == largura and h >= 30:
             continue
         plataformas.append([x, y, w, h])

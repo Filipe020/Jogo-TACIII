@@ -10,6 +10,8 @@ import pygame
 
 from config import settings
 from levels.level_data import (
+    BOSS_EDITOR_NAMES,
+    BOSS_EDITOR_TYPES,
     SLOTS,
     TIPOS_INIMIGOS,
     carregar_slot,
@@ -32,6 +34,7 @@ TOOLS = [
     ("distancia", "5  Inimigo atirador"),
     ("jogador", "6  Inicio do jogador"),
     ("chefe", "7  Portal do chefe"),
+    ("boss_teste", "8  Boss de teste"),
     ("apagar", "X  Apagar"),
 ]
 KEY_TO_TOOL = {
@@ -43,6 +46,7 @@ KEY_TO_TOOL = {
     pygame.K_5: "distancia",
     pygame.K_6: "jogador",
     pygame.K_7: "chefe",
+    pygame.K_8: "boss_teste",
     pygame.K_x: "apagar",
 }
 COLORS = {
@@ -51,7 +55,14 @@ COLORS = {
     "resistente": (139, 147, 227),
     "distancia": (114, 201, 151),
     "chefe": (210, 103, 250),
+    "boss_editor_1": (182, 118, 255),
+    "boss_editor_2": (206, 108, 108),
+    "boss_editor_3": (96, 199, 161),
+    "boss_editor_4": (186, 214, 244),
+    "boss_editor_5": (215, 92, 128),
+    "boss_teste": (215, 92, 128),
 }
+BOSS_EDITOR_ORDER = tuple(BOSS_EDITOR_TYPES)
 
 
 class LevelEditor:
@@ -76,8 +87,9 @@ class LevelEditor:
         self.font_bold = scaled_font(17, bold=True)
         self.font_title = scaled_font(22, bold=True)
 
+        self.selected_boss_marker = BOSS_EDITOR_ORDER[-1]
         self.tool_buttons = [
-            pygame.Rect(PANEL_X + 10, 90 + i * 27, 194, 25)
+            pygame.Rect(PANEL_X + 10, 88 + i * 24, 194, 23)
             for i in range(len(TOOLS))
         ]
         self.spawn_button = pygame.Rect(PANEL_X + 10, 336, 194, 26)
@@ -93,6 +105,32 @@ class LevelEditor:
         self.width_minus = pygame.Rect(651, 9, 29, 32)
         self.width_plus = pygame.Rect(689, 9, 29, 32)
         self.back_button = pygame.Rect(PANEL_X + 10, 9, 194, 33)
+
+    def _is_large_marker(self, tipo):
+        return tipo == "chefe" or tipo in BOSS_EDITOR_TYPES
+
+    def _marker_rect(self, tipo, x, y):
+        return pygame.Rect(
+            x,
+            y,
+            76 if self._is_large_marker(tipo) else 28,
+            94 if self._is_large_marker(tipo) else 44,
+        )
+
+    def _tool_label(self, tool, label):
+        if tool == "boss_teste":
+            nome = BOSS_EDITOR_NAMES.get(self.selected_boss_marker, "Boss")
+            return f"8  {nome}"
+        return label
+
+    def _boss_hint(self):
+        nome = BOSS_EDITOR_NAMES.get(self.selected_boss_marker, "Boss")
+        return f"Q/E: trocar boss de teste ({nome})"
+
+    def _trocar_boss_teste(self, delta=1):
+        atual = BOSS_EDITOR_ORDER.index(self.selected_boss_marker)
+        self.selected_boss_marker = BOSS_EDITOR_ORDER[(atual + delta) % len(BOSS_EDITOR_ORDER)]
+        self.informar(f"Boss de teste selecionado: {BOSS_EDITOR_NAMES[self.selected_boss_marker]}")
 
     def informar(self, text, seconds=4):
         self.notice = text
@@ -143,12 +181,7 @@ class LevelEditor:
             return "jogador", None
         for i in range(len(self.mapa["inimigos"]) - 1, -1, -1):
             e = self.mapa["inimigos"][i]
-            if pygame.Rect(
-                e["x"] - 5,
-                e["y"] - 5,
-                86 if e["tipo"] == "chefe" else 35,
-                104 if e["tipo"] == "chefe" else 44,
-            ).collidepoint(wx, wy):
+            if self._marker_rect(e["tipo"], e["x"] - 5, e["y"] - 5).collidepoint(wx, wy):
                 return "inimigo", i
         for i in range(len(self.mapa["plataformas"]) - 1, -1, -1):
             if pygame.Rect(*self.mapa["plataformas"][i]).collidepoint(wx, wy):
@@ -173,14 +206,15 @@ class LevelEditor:
     def _inserir(self, pos):
         x, y = self._snap(pos)
         x = max(0, min(x, self.mapa["largura"] - GRID * 2))
-        if self.tool in TIPOS_INIMIGOS:
+        if self.tool in TIPOS_INIMIGOS or self.tool == "boss_teste":
             if len(self.mapa["inimigos"]) >= 200:
                 self.informar("Limite de 200 inimigos por fase.")
                 return
             self._registrar_alteracao()
-            altura = 94 if self.tool == "chefe" else 48
+            tipo = self.selected_boss_marker if self.tool == "boss_teste" else self.tool
+            altura = 94 if self._is_large_marker(tipo) else 48
             self.mapa["inimigos"].append({
-                "tipo": self.tool,
+                "tipo": tipo,
                 "x": x,
                 "y": max(0, min(y, settings.SCREEN_HEIGHT - altura)),
             })
@@ -217,7 +251,7 @@ class LevelEditor:
             w, h = 28, 44
         elif tipo == "inimigo":
             target = self.mapa["inimigos"][index]
-            w, h = (76, 94) if target["tipo"] == "chefe" else (35, 48)
+            w, h = (76, 94) if self._is_large_marker(target["tipo"]) else (35, 48)
         else:
             target = self.mapa["plataformas"][index]
             w, h = target[2], target[3]
@@ -328,7 +362,7 @@ class LevelEditor:
                 self.informar("Mova plataformas do fim antes de encurtar a fase.")
                 return
         if (
-            any(e["x"] + (76 if e["tipo"] == "chefe" else 35) > nova for e in self.mapa["inimigos"])
+            any(e["x"] + (76 if self._is_large_marker(e["tipo"]) else 35) > nova for e in self.mapa["inimigos"])
             or self.mapa["spawn_jogador"][0] + 28 > nova
         ):
             self.informar("Mova inimigos e jogador antes de encurtar a fase.")
@@ -376,6 +410,10 @@ class LevelEditor:
                 self.mudar_slot(event.key - pygame.K_F1 + 1)
             elif event.key in KEY_TO_TOOL:
                 self.tool = KEY_TO_TOOL[event.key]
+            elif event.key == pygame.K_q:
+                self._trocar_boss_teste(-1)
+            elif event.key == pygame.K_e:
+                self._trocar_boss_teste(1)
             elif event.key == pygame.K_b:
                 self._registrar_alteracao()
                 self.mapa["spawn_automatico"] = not self.mapa["spawn_automatico"]
@@ -470,7 +508,7 @@ class LevelEditor:
             pygame.draw.line(screen, c, spt(0, y), spt(PANEL_X, y), sval(1))
 
     def _draw_enemy(self, screen, x, y, tipo, ghost=False):
-        color = COLORS[tipo]
+        color = COLORS.get(tipo, COLORS.get("boss_teste", (215, 92, 128)))
         if tipo == "chefe":
             pygame.draw.ellipse(screen, (44, 21, 79), srect(x, y + 2, 68, 82))
             pygame.draw.ellipse(screen, color, srect(x, y + 2, 68, 82), sval(3))
@@ -485,6 +523,16 @@ class LevelEditor:
                 )
             if not ghost:
                 self._texto(screen, "PORTAL", x - 3, y - 18, color, self.font_small)
+            return
+        if tipo in BOSS_EDITOR_TYPES:
+            pygame.draw.rect(screen, (32, 20, 40), srect(x, y + 8, 66, 76), border_radius=sval(8))
+            pygame.draw.rect(screen, color, srect(x, y + 8, 66, 76), sval(3), border_radius=sval(8))
+            pygame.draw.circle(screen, color, spt(x + 33, y + 28), sval(12), sval(2))
+            pygame.draw.line(screen, color, spt(x + 19, y + 57), spt(x + 47, y + 57), sval(3))
+            pygame.draw.line(screen, color, spt(x + 23, y + 66), spt(x + 43, y + 66), sval(3))
+            label = tipo.split("_")[-1]
+            if not ghost:
+                self._texto(screen, f"B{label}", x + 18, y - 18, color, self.font_small)
             return
         pygame.draw.circle(screen, color, spt(x + 13, y + 10), sval(10))
         pygame.draw.rect(screen, color, srect(x + 6, y + 19, 15, 17), border_radius=sval(4))
@@ -532,9 +580,10 @@ class LevelEditor:
                 max(20, abs(ay - by) + GRID),
             )
             pygame.draw.rect(screen, (228, 210, 143), srect(r), sval(2))
-        elif self._em_mapa(mouse) and self.tool in TIPOS_INIMIGOS:
+        elif self._em_mapa(mouse) and (self.tool in TIPOS_INIMIGOS or self.tool == "boss_teste"):
             x, y = self._snap(mouse)
-            self._draw_enemy(screen, x - cam, y, self.tool, ghost=True)
+            tipo_preview = self.selected_boss_marker if self.tool == "boss_teste" else self.tool
+            self._draw_enemy(screen, x - cam, y, tipo_preview, ghost=True)
         elif self._em_mapa(mouse) and self.tool == "jogador":
             x, y = self._snap(mouse)
             pygame.draw.rect(screen, (127, 244, 231), srect(x - cam, y, 28, 44), sval(2))
@@ -556,8 +605,8 @@ class LevelEditor:
                     r = pygame.Rect(
                         e["x"] - cam,
                         e["y"],
-                        76 if e["tipo"] == "chefe" else 28,
-                        94 if e["tipo"] == "chefe" else 44,
+                        76 if self._is_large_marker(e["tipo"]) else 28,
+                        94 if self._is_large_marker(e["tipo"]) else 44,
                     )
                 pygame.draw.rect(
                     screen,
@@ -617,7 +666,7 @@ class LevelEditor:
         pygame.draw.rect(screen, (27, 24, 43), srect(PANEL_X, TOP_H, 214, settings.SCREEN_HEIGHT - TOP_H))
         self._texto(screen, "FERRAMENTAS", PANEL_X + 14, 65, (226, 181, 249), self.font_bold)
         for (tool, label), rect in zip(TOOLS, self.tool_buttons):
-            self._rounded_button(screen, rect, label, tool == self.tool)
+            self._rounded_button(screen, rect, self._tool_label(tool, label), tool == self.tool)
         self._rounded_button(
             screen,
             self.spawn_button,
@@ -628,7 +677,8 @@ class LevelEditor:
         self._rounded_button(screen, self.action_buttons["carregar"], "Ctrl+O Abrir")
         self._rounded_button(screen, self.action_buttons["testar"], "F5  TESTAR A FASE", accent=True)
         self._rounded_button(screen, self.action_buttons["novo"], "N  Nova fase")
-        self._texto(screen, "ESC: voltar | G: grade", PANEL_X + 14, 483, (186, 175, 202), self.font_small)
+        ajuda = self._boss_hint() if self.tool == "boss_teste" else "ESC: voltar | G: grade"
+        self._texto(screen, ajuda, PANEL_X + 14, 483, (186, 175, 202), self.font_small)
 
         pygame.draw.rect(
             screen,

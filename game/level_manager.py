@@ -6,7 +6,11 @@ import pygame
 
 from entities.enemy import Enemy
 from config import settings
-from levels.level_data import mapa_padrao, normalizar_mapa
+from levels.level_data import (
+    BOSS_EDITOR_MARKERS,
+    mapa_padrao,
+    normalizar_mapa,
+)
 
 
 class LevelManager:
@@ -22,8 +26,6 @@ class LevelManager:
 
     def carregar_mapa(self, dados):
         mapa = normalizar_mapa(dados)
-        # O terreno do fundo é o único piso do mapa: há colisão, mas não desenho
-        # nem um objeto selecionável no editor.
         self.chao = pygame.Rect(0, settings.GROUND_Y, mapa["largura"],
                                settings.SCREEN_HEIGHT - settings.GROUND_Y)
         self.plataformas = [pygame.Rect(*item) for item in mapa["plataformas"]]
@@ -31,7 +33,6 @@ class LevelManager:
         self.limites = (0, mapa["largura"])
         self.spawn_jogador = tuple(mapa["spawn_jogador"])
         marcadores = [e for e in mapa["inimigos"] if e["tipo"] == "chefe"]
-        # Marcador do editor indica a entrada da arena, não um mob no mapa.
         self.portal_x = (int(marcadores[0]["x"]) if marcadores
                          else max(300, mapa["largura"] - 180))
         self.inimigos_iniciais = [e for e in mapa["inimigos"] if e["tipo"] != "chefe"]
@@ -46,6 +47,8 @@ class LevelManager:
         self.chefe_concluido = False
         self.proximo_portal_mobs = self.MOBS_POR_PORTAL
         self.arena_ativa = False
+        self.boss_order = ["chefe", "boss_basico", "boss_distancia", "boss_resistente", "boss_samurai"]
+        self.boss_index = 0
         self._plataformas_fase = None
         self._limites_fase = None
         self._chao_fase = None
@@ -53,9 +56,8 @@ class LevelManager:
     def criar_inimigos_iniciais(self):
         inimigos = []
         for item in self.inimigos_iniciais:
-            mob = Enemy(item["x"], item["y"], item["tipo"])
-            # Preserva inimigos posicionados em plataformas pelo editor, mas
-            # corrige spawns antigos que ficariam enterrados abaixo do piso.
+            tipo_real = BOSS_EDITOR_MARKERS.get(item["tipo"], item["tipo"])
+            mob = Enemy(item["x"], item["y"], tipo_real)
             if mob.y + mob.height >= settings.GROUND_Y:
                 mob.y = settings.GROUND_Y - mob.height
                 mob.on_ground = True
@@ -87,20 +89,16 @@ class LevelManager:
         lado = random.choice([-1, 1])
         distancia = random.randint(420, 700)
         x = max(self.limites[0], min(self.limites[1] - 40, player_x + lado * distancia))
-        # Surge já pisando no mesmo chão invisível que o ninja. Antes nascia
-        # em y=0 e precisava cair do topo da tela, causando descompasso visual.
         enemy = Enemy(x, 0, tipo)
         enemy.y = settings.GROUND_Y - enemy.height
         enemy.on_ground = True
         return enemy
 
     def portal_disponivel(self, mobs_derrotados):
-        """Só abre o portal quando a meta atual de inimigos comuns for atingida."""
         return (not self.arena_ativa and not self.chefe_spawnado
                 and mobs_derrotados >= self.proximo_portal_mobs)
 
     def portal_atingido(self, players, mobs_derrotados):
-        """Ativa a arena apenas com portal aberto e jogador junto à entrada."""
         if not self.portal_disponivel(mobs_derrotados):
             return False
         return any(p is not None and not p.morto
@@ -108,7 +106,6 @@ class LevelManager:
                    for p in players)
 
     def entrar_arena_chefe(self):
-        """Troca somente as plataformas e limites da fase pela arena isolada."""
         if self.arena_ativa or self.chefe_spawnado:
             return False
         self._plataformas_fase = self.plataformas
@@ -119,7 +116,7 @@ class LevelManager:
         self.chao = pygame.Rect(0, settings.GROUND_Y, self.ARENA_LARGURA,
                                settings.SCREEN_HEIGHT - settings.GROUND_Y)
         self.plataformas = [
-            self.chao,  # piso físico invisível da arena
+            self.chao,
             pygame.Rect(245, 350, 175, 22),
             pygame.Rect(985, 350, 175, 22),
         ]
@@ -136,16 +133,31 @@ class LevelManager:
         self._chao_fase = None
         self.arena_ativa = False
         self.chefe_concluido = True
-        self.chefe_spawnado = False  # libera novos encontros após outra meta
+        self.chefe_spawnado = False
         self.proximo_portal_mobs += self.MOBS_POR_PORTAL
+        self.boss_index = (self.boss_index + 1) % len(self.boss_order)
         self.tempo_desde_spawn = 0.0
         return True
 
+    def tipo_chefe_atual(self):
+        return self.boss_order[self.boss_index]
+
+    def nome_chefe_atual(self):
+        nomes = {
+            "chefe": "ESPECTRO ANCESTRAL",
+            "boss_basico": "NECROZUMBI TITAN",
+            "boss_distancia": "SENTINELA MECANICO",
+            "boss_resistente": "ESPECTRO DAS CINZAS",
+            "boss_samurai": "SAMURAI DO CREPUSCULO",
+        }
+        return nomes.get(self.tipo_chefe_atual(), "CHEFE")
+
     def criar_chefe(self, player_x=0):
-        """O chefe é instanciado exclusivamente dentro da arena."""
         if not self.arena_ativa or self.chefe_spawnado:
             return None
         self.chefe_spawnado = True
-        chefe = Enemy(1040, settings.GROUND_Y - 94, "chefe")
-        chefe.on_ground = True
-        return chefe
+        tipo = self.tipo_chefe_atual()
+        prototipo = Enemy(1040, 0, tipo)
+        prototipo.y = settings.GROUND_Y - prototipo.height
+        prototipo.on_ground = True
+        return prototipo

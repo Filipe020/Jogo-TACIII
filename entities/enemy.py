@@ -3,6 +3,7 @@
 import os
 import random
 from itertools import count
+from systems.display import sdim, spt, srect
 
 import pygame
 
@@ -245,14 +246,18 @@ class Enemy(Entity):
         # que todos pareçam pisar no mesmo terreno com hitboxes inalteradas.
         padding_visual = ENEMY_FOOT_OFFSETS[self.tipo]
         draw_y = self.rect.bottom - frame_h - padding_visual
-        self.anim.desenhar(surface, draw_x, draw_y, self.facing)
+
+        frame_surf = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
+        self.anim.desenhar(frame_surf, 0, 0, self.facing)
+        scaled_frame = pygame.transform.scale(frame_surf, sdim(frame_w, frame_h))
+        surface.blit(scaled_frame, spt(draw_x, draw_y))
 
         if self.alive and self.tipo != "chefe" and self.health < self.max_health:
             rect = self.rect
             rect.x -= camera_x
-            barra_bg = pygame.Rect(rect.x, rect.y - 8, rect.width, 4)
+            barra_bg = srect(rect.x, rect.y - 8, rect.width, 4)
             pct = max(0, self.health / self.max_health)
-            barra_fg = pygame.Rect(rect.x, rect.y - 8, int(rect.width * pct), 4)
+            barra_fg = srect(rect.x, rect.y - 8, int(rect.width * pct), 4)
             pygame.draw.rect(surface, settings.COLOR_HP_BG, barra_bg)
             pygame.draw.rect(surface, settings.COLOR_HP, barra_fg)
 

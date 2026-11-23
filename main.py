@@ -26,11 +26,12 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 rodando = False
+            elif event.type == pygame.VIDEORESIZE:
+                video.handle_resize(event.size)
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+                video.toggle_fullscreen()
             else:
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
-                    video.toggle_fullscreen()
-                else:
-                    gerenciador.handle_event(video.map_event(event))
+                gerenciador.handle_event(video.map_event(event))
 
         if gerenciador.sair_solicitado:
             rodando = False

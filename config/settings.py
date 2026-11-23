@@ -12,19 +12,19 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # renderiza essa cena em Full HD (ou na maior resolução disponível).
 SCREEN_WIDTH = 960
 SCREEN_HEIGHT = 540
-FULLHD_WIDTH = 1920
-FULLHD_HEIGHT = 1080
+RENDER_SCALE = 2
+FULLHD_WIDTH = SCREEN_WIDTH * RENDER_SCALE
+FULLHD_HEIGHT = SCREEN_HEIGHT * RENDER_SCALE
 FULLSCREEN = True
-DISPLAY_VIEWPORT = (0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+DISPLAY_VIEWPORT = (0, 0, FULLHD_WIDTH, FULLHD_HEIGHT)
 
 
 def posicao_mouse_logica():
     """Converte cursor físico para a resolução virtual usada por todos os menus."""
-    import pygame
-    px, py = pygame.mouse.get_pos()
-    vx, vy, vw, vh = DISPLAY_VIEWPORT
-    return (int((px - vx) * SCREEN_WIDTH / max(1, vw)),
-            int((py - vy) * SCREEN_HEIGHT / max(1, vh)))
+    from systems.display import mouse_pos
+    return mouse_pos()
+
+
 FPS = 60
 TITLE = "Shadow Rebirth"
 

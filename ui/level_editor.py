@@ -17,6 +17,7 @@ from levels.level_data import (
     mapa_padrao,
     salvar_slot,
 )
+from systems.display import font as scaled_font, mouse_pos, sdim, spt, srect, sval
 
 GRID = 20
 PANEL_X = 746
@@ -70,10 +71,10 @@ class LevelEditor:
         self.notice_time = 7.0
         self.confirm_action = None
         self.show_grid = True
-        self.font = pygame.font.SysFont("consolas", 16)
-        self.font_small = pygame.font.SysFont("consolas", 13)
-        self.font_bold = pygame.font.SysFont("consolas", 17, bold=True)
-        self.font_title = pygame.font.SysFont("consolas", 22, bold=True)
+        self.font = scaled_font(16)
+        self.font_small = scaled_font(13)
+        self.font_bold = scaled_font(17, bold=True)
+        self.font_title = scaled_font(22, bold=True)
 
         self.tool_buttons = [
             pygame.Rect(PANEL_X + 10, 90 + i * 27, 194, 25)
@@ -86,13 +87,11 @@ class LevelEditor:
             "testar": pygame.Rect(PANEL_X + 10, 403, 194, 32),
             "novo": pygame.Rect(PANEL_X + 10, 441, 194, 28),
         }
-        # Cada botão tem espaço para "F1 FASE 1" sem cortes.
         self.slots_buttons = {
             i: pygame.Rect(333 + (i - 1) * 105, 9, 99, 33) for i in SLOTS
         }
         self.width_minus = pygame.Rect(651, 9, 29, 32)
         self.width_plus = pygame.Rect(689, 9, 29, 32)
-        # Visível no cabeçalho, à direita: volta ao menu principal.
         self.back_button = pygame.Rect(PANEL_X + 10, 9, 194, 33)
 
     def informar(self, text, seconds=4):
@@ -144,9 +143,12 @@ class LevelEditor:
             return "jogador", None
         for i in range(len(self.mapa["inimigos"]) - 1, -1, -1):
             e = self.mapa["inimigos"][i]
-            if pygame.Rect(e["x"] - 5, e["y"] - 5,
-                           86 if e["tipo"] == "chefe" else 35,
-                           104 if e["tipo"] == "chefe" else 44).collidepoint(wx, wy):
+            if pygame.Rect(
+                e["x"] - 5,
+                e["y"] - 5,
+                86 if e["tipo"] == "chefe" else 35,
+                104 if e["tipo"] == "chefe" else 44,
+            ).collidepoint(wx, wy):
                 return "inimigo", i
         for i in range(len(self.mapa["plataformas"]) - 1, -1, -1):
             if pygame.Rect(*self.mapa["plataformas"][i]).collidepoint(wx, wy):
@@ -178,7 +180,9 @@ class LevelEditor:
             self._registrar_alteracao()
             altura = 94 if self.tool == "chefe" else 48
             self.mapa["inimigos"].append({
-                "tipo": self.tool, "x": x, "y": max(0, min(y, settings.SCREEN_HEIGHT - altura))
+                "tipo": self.tool,
+                "x": x,
+                "y": max(0, min(y, settings.SCREEN_HEIGHT - altura)),
             })
         elif self.tool == "jogador":
             self._registrar_alteracao()
@@ -319,12 +323,14 @@ class LevelEditor:
         nova = max(settings.SCREEN_WIDTH, min(12000, antiga + delta))
         if nova == antiga:
             return
-        # O piso invisível acompanha automaticamente a largura no jogo.
         for p in self.mapa["plataformas"]:
             if p[0] + p[2] > nova:
                 self.informar("Mova plataformas do fim antes de encurtar a fase.")
                 return
-        if any(e["x"] + (76 if e["tipo"] == "chefe" else 35) > nova for e in self.mapa["inimigos"]) or self.mapa["spawn_jogador"][0] + 28 > nova:
+        if (
+            any(e["x"] + (76 if e["tipo"] == "chefe" else 35) > nova for e in self.mapa["inimigos"])
+            or self.mapa["spawn_jogador"][0] + 28 > nova
+        ):
             self.informar("Mova inimigos e jogador antes de encurtar a fase.")
             return
         self._registrar_alteracao()
@@ -452,48 +458,51 @@ class LevelEditor:
 
     def _texto(self, screen, text, x, y, color=(239, 236, 245), font=None):
         rendered = (font or self.font).render(str(text), True, color)
-        screen.blit(rendered, (int(x), int(y)))
+        screen.blit(rendered, spt(x, y))
 
     def _draw_grid(self, screen):
         xoffset = int(self.camera_x) % GRID
         for x in range(-xoffset, PANEL_X, GRID):
             c = (69, 60, 97) if (int(x + self.camera_x) // GRID) % 5 else (97, 84, 127)
-            pygame.draw.line(screen, c, (x, TOP_H), (x, BOTTOM_Y), 1)
+            pygame.draw.line(screen, c, spt(x, TOP_H), spt(x, BOTTOM_Y), sval(1))
         for y in range((TOP_H // GRID) * GRID, BOTTOM_Y, GRID):
             c = (69, 60, 97) if (y // GRID) % 5 else (97, 84, 127)
-            pygame.draw.line(screen, c, (0, y), (PANEL_X, y), 1)
+            pygame.draw.line(screen, c, spt(0, y), spt(PANEL_X, y), sval(1))
 
     def _draw_enemy(self, screen, x, y, tipo, ghost=False):
         color = COLORS[tipo]
         if tipo == "chefe":
-            # O ícone é um marcador de PORTAL, não o chefe dentro desta fase.
-            pygame.draw.ellipse(screen, (44, 21, 79), (x, y + 2, 68, 82))
-            pygame.draw.ellipse(screen, color, (x, y + 2, 68, 82), 3)
-            pygame.draw.ellipse(screen, (174, 104, 255), (x + 12, y + 14, 44, 62), 2)
+            pygame.draw.ellipse(screen, (44, 21, 79), srect(x, y + 2, 68, 82))
+            pygame.draw.ellipse(screen, color, srect(x, y + 2, 68, 82), sval(3))
+            pygame.draw.ellipse(screen, (174, 104, 255), srect(x + 12, y + 14, 44, 62), sval(2))
             for dy in (28, 46, 64):
-                pygame.draw.line(screen, (243, 211, 255), (x + 25, y + dy),
-                                 (x + 43, y + dy + 4), 2)
+                pygame.draw.line(
+                    screen,
+                    (243, 211, 255),
+                    spt(x + 25, y + dy),
+                    spt(x + 43, y + dy + 4),
+                    sval(2),
+                )
             if not ghost:
                 self._texto(screen, "PORTAL", x - 3, y - 18, color, self.font_small)
             return
-        pygame.draw.circle(screen, color, (x + 13, y + 10), 10)
-        pygame.draw.rect(screen, color, pygame.Rect(x + 6, y + 19, 15, 17), border_radius=4)
-        pygame.draw.line(screen, color, (x + 8, y + 34), (x + 4, y + 42), 3)
-        pygame.draw.line(screen, color, (x + 20, y + 34), (x + 24, y + 42), 3)
-        pygame.draw.circle(screen, (26, 22, 42), (x + 9, y + 9), 2)
-        pygame.draw.circle(screen, (26, 22, 42), (x + 17, y + 9), 2)
+        pygame.draw.circle(screen, color, spt(x + 13, y + 10), sval(10))
+        pygame.draw.rect(screen, color, srect(x + 6, y + 19, 15, 17), border_radius=sval(4))
+        pygame.draw.line(screen, color, spt(x + 8, y + 34), spt(x + 4, y + 42), sval(3))
+        pygame.draw.line(screen, color, spt(x + 20, y + 34), spt(x + 24, y + 42), sval(3))
+        pygame.draw.circle(screen, (26, 22, 42), spt(x + 9, y + 9), sval(2))
+        pygame.draw.circle(screen, (26, 22, 42), spt(x + 17, y + 9), sval(2))
         if not ghost:
             self._texto(screen, tipo[:3].upper(), x - 4, y - 16, color, self.font_small)
 
     def _draw_world(self, screen):
         self.background.draw(screen, self.camera_x)
-        # Escurece levemente para manter as plataformas e marcas legíveis.
-        veil = pygame.Surface((PANEL_X, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        veil = pygame.Surface(sdim(PANEL_X, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
         veil.fill((12, 11, 24, 95))
         screen.blit(veil, (0, 0))
 
         old_clip = screen.get_clip()
-        screen.set_clip(pygame.Rect(0, TOP_H, PANEL_X, BOTTOM_Y - TOP_H))
+        screen.set_clip(srect(0, TOP_H, PANEL_X, BOTTOM_Y - TOP_H))
         if self.show_grid:
             self._draw_grid(screen)
         cam = int(self.camera_x)
@@ -501,34 +510,37 @@ class LevelEditor:
             r = pygame.Rect(x - cam, y, w, h)
             if r.right < 0 or r.left > PANEL_X:
                 continue
-            pygame.draw.rect(screen, settings.COLOR_PLATFORM, r)
-            pygame.draw.rect(screen, settings.COLOR_PLATFORM_TOP, (r.x, r.y, r.width, min(6, h)))
-            pygame.draw.rect(screen, (177, 140, 106), r, 1)
+            pygame.draw.rect(screen, settings.COLOR_PLATFORM, srect(r))
+            pygame.draw.rect(screen, settings.COLOR_PLATFORM_TOP, srect(r.x, r.y, r.width, min(6, h)))
+            pygame.draw.rect(screen, (177, 140, 106), srect(r), sval(1))
         for e in self.mapa["inimigos"]:
             if -40 <= e["x"] - cam <= PANEL_X + 20:
                 self._draw_enemy(screen, e["x"] - cam, e["y"], e["tipo"])
         sx, sy = self.mapa["spawn_jogador"]
-        pygame.draw.rect(screen, (89, 220, 209), (sx - cam, sy, 28, 44), 2)
-        pygame.draw.circle(screen, (89, 220, 209), (sx - cam + 14, sy + 10), 7)
+        pygame.draw.rect(screen, (89, 220, 209), srect(sx - cam, sy, 28, 44), sval(2))
+        pygame.draw.circle(screen, (89, 220, 209), spt(sx - cam + 14, sy + 10), sval(7))
         self._texto(screen, "START", sx - cam - 10, sy - 18, (127, 244, 231), self.font_small)
 
-        # Elemento em construção antes de soltar o mouse.
-        mouse = settings.posicao_mouse_logica()
+        mouse = mouse_pos()
         if self.platform_start is not None:
             ax, ay = self.platform_start
             bx, by = self._snap(mouse)
-            r = pygame.Rect(min(ax, bx) - cam, min(ay, by),
-                            max(40, abs(ax - bx) + GRID), max(20, abs(ay - by) + GRID))
-            pygame.draw.rect(screen, (228, 210, 143), r, 2)
+            r = pygame.Rect(
+                min(ax, bx) - cam,
+                min(ay, by),
+                max(40, abs(ax - bx) + GRID),
+                max(20, abs(ay - by) + GRID),
+            )
+            pygame.draw.rect(screen, (228, 210, 143), srect(r), sval(2))
         elif self._em_mapa(mouse) and self.tool in TIPOS_INIMIGOS:
             x, y = self._snap(mouse)
             self._draw_enemy(screen, x - cam, y, self.tool, ghost=True)
         elif self._em_mapa(mouse) and self.tool == "jogador":
             x, y = self._snap(mouse)
-            pygame.draw.rect(screen, (127, 244, 231), (x - cam, y, 28, 44), 2)
+            pygame.draw.rect(screen, (127, 244, 231), srect(x - cam, y, 28, 44), sval(2))
         elif self._em_mapa(mouse) and self.tool == "plataforma":
             x, y = self._snap(mouse)
-            pygame.draw.rect(screen, (228, 210, 143), (x - cam, y, 40, GRID), 2)
+            pygame.draw.rect(screen, (228, 210, 143), srect(x - cam, y, 40, GRID), sval(2))
         elif self._em_mapa(mouse) and self.tool in ("selecionar", "apagar"):
             alvo = self._hit(mouse)
             if alvo:
@@ -541,72 +553,108 @@ class LevelEditor:
                     r = pygame.Rect(x - cam, y, 28, 44)
                 else:
                     e = self.mapa["inimigos"][index]
-                    r = pygame.Rect(e["x"] - cam, e["y"],
-                                    76 if e["tipo"] == "chefe" else 28,
-                                    94 if e["tipo"] == "chefe" else 44)
-                pygame.draw.rect(screen, (250, 214, 104) if self.tool == "selecionar" else
-                                 (255, 115, 120), r.inflate(4, 4), 2)
+                    r = pygame.Rect(
+                        e["x"] - cam,
+                        e["y"],
+                        76 if e["tipo"] == "chefe" else 28,
+                        94 if e["tipo"] == "chefe" else 44,
+                    )
+                pygame.draw.rect(
+                    screen,
+                    (250, 214, 104) if self.tool == "selecionar" else (255, 115, 120),
+                    srect(r.inflate(4, 4)),
+                    sval(2),
+                )
         screen.set_clip(old_clip)
-        pygame.draw.line(screen, (157, 121, 201), (PANEL_X - 1, 0),
-                         (PANEL_X - 1, settings.SCREEN_HEIGHT), 2)
+        pygame.draw.line(
+            screen,
+            (157, 121, 201),
+            spt(PANEL_X - 1, 0),
+            spt(PANEL_X - 1, settings.SCREEN_HEIGHT),
+            sval(2),
+        )
 
     def _rounded_button(self, screen, rect, title, active=False, accent=False):
+        drect = srect(rect)
         color = (88, 58, 127) if active else (47, 43, 65)
         if accent:
             color = (107, 61, 149)
-        pygame.draw.rect(screen, color, rect, border_radius=6)
-        pygame.draw.rect(screen, (161, 127, 200) if active or accent else (84, 75, 103),
-                         rect, 1, border_radius=6)
+        pygame.draw.rect(screen, color, drect, border_radius=sval(6))
+        pygame.draw.rect(
+            screen,
+            (161, 127, 200) if active or accent else (84, 75, 103),
+            drect,
+            sval(1),
+            border_radius=sval(6),
+        )
         fonte = self.font_small
         label = fonte.render(title, True, (250, 248, 253))
-        # Segurança extra para nenhum texto transbordar, inclusive em outras fontes do SO.
-        if label.get_width() > rect.width - 12:
-            fonte = pygame.font.SysFont("consolas", max(10, int(13 * (rect.width - 12) / label.get_width())))
+        if label.get_width() > drect.width - sval(12):
+            fonte = scaled_font(max(10, int(13 * (drect.width - sval(12)) / label.get_width())))
             label = fonte.render(title, True, (250, 248, 253))
-        if label.get_width() > rect.width - 10:
-            label = pygame.transform.smoothscale(label, (rect.width - 10, label.get_height()))
-        screen.blit(label, label.get_rect(center=rect.center))
+        if label.get_width() > drect.width - sval(10):
+            label = pygame.transform.smoothscale(label, (drect.width - sval(10), label.get_height()))
+        screen.blit(label, label.get_rect(center=drect.center))
 
     def draw(self, screen):
         self._draw_world(screen)
-        pygame.draw.rect(screen, (22, 19, 36), (0, 0, settings.SCREEN_WIDTH, TOP_H))
-        pygame.draw.line(screen, (113, 79, 153), (0, TOP_H - 1),
-                         (settings.SCREEN_WIDTH, TOP_H - 1), 2)
+        pygame.draw.rect(screen, (22, 19, 36), srect(0, 0, settings.SCREEN_WIDTH, TOP_H))
+        pygame.draw.line(
+            screen,
+            (113, 79, 153),
+            spt(0, TOP_H - 1),
+            spt(settings.SCREEN_WIDTH, TOP_H - 1),
+            sval(2),
+        )
         self._texto(screen, "EDITOR DE FASES", 12, 8, (222, 158, 255), self.font_title)
-        self._texto(screen, f"{self.mapa['largura']} px", 225, 16,
-                    (190, 175, 212), self.font_small)
+        self._texto(screen, f"{self.mapa['largura']} px", 225, 16, (190, 175, 212), self.font_small)
         for slot, rect in self.slots_buttons.items():
             self._rounded_button(screen, rect, f"F{slot}  FASE {slot}", slot == self.slot)
         self._rounded_button(screen, self.width_minus, "-")
         self._rounded_button(screen, self.width_plus, "+")
         self._rounded_button(screen, self.back_button, "< VOLTAR AO MENU", accent=True)
 
-        pygame.draw.rect(screen, (27, 24, 43), (PANEL_X, TOP_H, 214, settings.SCREEN_HEIGHT - TOP_H))
+        pygame.draw.rect(screen, (27, 24, 43), srect(PANEL_X, TOP_H, 214, settings.SCREEN_HEIGHT - TOP_H))
         self._texto(screen, "FERRAMENTAS", PANEL_X + 14, 65, (226, 181, 249), self.font_bold)
         for (tool, label), rect in zip(TOOLS, self.tool_buttons):
             self._rounded_button(screen, rect, label, tool == self.tool)
-        self._rounded_button(screen, self.spawn_button,
-                             f"B  Spawn automatico: {'SIM' if self.mapa['spawn_automatico'] else 'NAO'}",
-                             self.mapa["spawn_automatico"])
+        self._rounded_button(
+            screen,
+            self.spawn_button,
+            f"B  Spawn automatico: {'SIM' if self.mapa['spawn_automatico'] else 'NAO'}",
+            self.mapa["spawn_automatico"],
+        )
         self._rounded_button(screen, self.action_buttons["salvar"], "Ctrl+S Salvar")
         self._rounded_button(screen, self.action_buttons["carregar"], "Ctrl+O Abrir")
         self._rounded_button(screen, self.action_buttons["testar"], "F5  TESTAR A FASE", accent=True)
         self._rounded_button(screen, self.action_buttons["novo"], "N  Nova fase")
-        self._texto(screen, "ESC: voltar | G: grade", PANEL_X + 14, 483,
-                    (186, 175, 202), self.font_small)
+        self._texto(screen, "ESC: voltar | G: grade", PANEL_X + 14, 483, (186, 175, 202), self.font_small)
 
-        pygame.draw.rect(screen, (22, 19, 36), (0, BOTTOM_Y, settings.SCREEN_WIDTH,
-                                               settings.SCREEN_HEIGHT - BOTTOM_Y))
-        pygame.draw.line(screen, (113, 79, 153), (0, BOTTOM_Y),
-                         (settings.SCREEN_WIDTH, BOTTOM_Y), 2)
+        pygame.draw.rect(
+            screen,
+            (22, 19, 36),
+            srect(0, BOTTOM_Y, settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT - BOTTOM_Y),
+        )
+        pygame.draw.line(
+            screen,
+            (113, 79, 153),
+            spt(0, BOTTOM_Y),
+            spt(settings.SCREEN_WIDTH, BOTTOM_Y),
+            sval(2),
+        )
         if self.notice_time > 0:
             texto = self.notice
         else:
             texto = "A/D: mover camera  |  Mouse: editar  |  Direito: apagar  |  Ctrl+Z/Y: desfazer/refazer"
-        # Ajusta a frase para não invadir o painel.
-        while self.font_small.size(texto)[0] > PANEL_X - 25 and len(texto) > 6:
+        while self.font_small.size(texto)[0] > sval(PANEL_X - 25) and len(texto) > 6:
             texto = texto[:-2]
         self._texto(screen, texto, 12, 516, (232, 218, 247), self.font_small)
         mark = " *" if self.dirty else ""
-        self._texto(screen, f"Fase {self.slot}{mark}", PANEL_X + 16, 515,
-                    (250, 200, 141) if self.dirty else (127, 234, 176), self.font_small)
+        self._texto(
+            screen,
+            f"Fase {self.slot}{mark}",
+            PANEL_X + 16,
+            515,
+            (250, 200, 141) if self.dirty else (127, 234, 176),
+            self.font_small,
+        )

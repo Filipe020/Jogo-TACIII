@@ -12,6 +12,7 @@ from systems import physics, collision, combat
 from systems.animation import AnimationController
 from config import settings
 from config.animations import PLAYER_ANIMATIONS, PLAYER_FRAME_SIZE
+from systems.display import sdim, spt, srect, sval
 
 class Player(Entity):
     WIDTH = 28
@@ -218,13 +219,17 @@ class Player(Entity):
         # Ancora o sprite pelos "pés": centro horizontal e base do hitbox.
         draw_x = self.rect.centerx - camera_x - frame_w // 2
         draw_y = self.rect.bottom - frame_h
-        self.anim.desenhar(surface, draw_x, draw_y, self.facing)
+
+        frame_surf = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
+        self.anim.desenhar(frame_surf, 0, 0, self.facing)
+        scaled_frame = pygame.transform.scale(frame_surf, sdim(frame_w, frame_h))
+        surface.blit(scaled_frame, spt(draw_x, draw_y))
 
         hitbox = self.sword_hitbox()
         if hitbox:
             r = hitbox.copy()
             r.x -= camera_x
-            pygame.draw.rect(surface, settings.COLOR_SWORD, r, 2, border_radius=3)
+            pygame.draw.rect(surface, settings.COLOR_SWORD, srect(r), sval(2), border_radius=sval(3))
 
         for proj in self.projectiles:
             proj.draw(surface, camera_x)

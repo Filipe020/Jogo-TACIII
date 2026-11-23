@@ -1,16 +1,16 @@
-"""Menu principal com fundo ilustrado e botões interativos."""
+"""Menu principal com fundo ilustrado e botões interativos em Full HD."""
 
-import os
 import pygame
 from config import settings
+from systems.display import font, mouse_pos, sdim, spt, srect, sval
 
 
 class MainMenu:
     def __init__(self):
-        self.fonte_titulo = pygame.font.SysFont("consolas", 58, bold=True)
-        self.fonte_subtitulo = pygame.font.SysFont("consolas", 18)
-        self.fonte_botao = pygame.font.SysFont("consolas", 22, bold=True)
-        self.fonte_pequena = pygame.font.SysFont("consolas", 16)
+        self.fonte_titulo = font(58, bold=True)
+        self.fonte_subtitulo = font(18)
+        self.fonte_botao = font(22, bold=True)
+        self.fonte_pequena = font(16)
         self.background = self._carregar_fundo()
         self.tela = "principal"
         self.mensagem = ""
@@ -18,12 +18,14 @@ class MainMenu:
         self.botoes = []
         self.ip_servidor = "127.0.0.1"
         self.ip_ativo = False
-        self.som_ativo = True  # O GameManager sincroniza com o AudioManager.
+        self.som_ativo = True
 
     def _carregar_fundo(self):
         try:
             imagem = pygame.image.load(settings.MENU_BACKGROUND).convert()
-            return pygame.transform.smoothscale(imagem, (settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
+            return pygame.transform.smoothscale(
+                imagem, sdim(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT)
+            )
         except (pygame.error, OSError):
             return None
 
@@ -88,21 +90,24 @@ class MainMenu:
 
     def update(self, dt):
         if self.mensagem_timer > 0:
-            self.mensagem_timer = max(0, self.mensagem_timer - dt)
+            self.mensagem_timer = max(0.0, self.mensagem_timer - dt)
 
     def _desenhar_botao(self, surface, nome, y, habilitado=True):
         rect = pygame.Rect(0, 0, 300, 42)
         rect.center = (settings.SCREEN_WIDTH // 2, y)
-        mouse = settings.posicao_mouse_logica()
-        hover = rect.collidepoint(mouse)
+        hover = rect.collidepoint(mouse_pos())
         cor = (70, 42, 100) if hover and habilitado else (30, 22, 52)
         borda = (224, 151, 255) if hover and habilitado else (135, 91, 177)
         if not habilitado:
             cor, borda = (28, 25, 37), (80, 75, 90)
-        pygame.draw.rect(surface, cor, rect, border_radius=8)
-        pygame.draw.rect(surface, borda, rect, width=2, border_radius=8)
-        texto = self.fonte_botao.render(nome, True, (245, 235, 255) if habilitado else (130, 125, 140))
-        surface.blit(texto, texto.get_rect(center=rect.center))
+
+        drect = srect(rect)
+        pygame.draw.rect(surface, cor, drect, border_radius=sval(8))
+        pygame.draw.rect(surface, borda, drect, width=sval(2), border_radius=sval(8))
+        texto = self.fonte_botao.render(
+            nome, True, (245, 235, 255) if habilitado else (130, 125, 140)
+        )
+        surface.blit(texto, texto.get_rect(center=drect.center))
         self.botoes.append((nome, rect))
 
     def draw(self, surface, tem_save=True):
@@ -110,20 +115,27 @@ class MainMenu:
             surface.blit(self.background, (0, 0))
         else:
             surface.fill((18, 14, 35))
-        # Sombra suave para garantir leitura do menu sobre a arte.
-        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+
+        overlay = pygame.Surface(sdim(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((7, 5, 22, 105))
         surface.blit(overlay, (0, 0))
 
         self.botoes = []
         if self.tela == "configuracoes":
             titulo = self.fonte_titulo.render("CONFIGURAÇÕES", True, (246, 220, 255))
-            surface.blit(titulo, titulo.get_rect(center=(480, 112)))
-            linhas = ["CONTROLES", "A / D  -  Movimentar", "W / ESPAÇO  -  Pular", "Botão esquerdo  -  Espada", "Botão direito  -  Shuriken", "H - Habilidades durante a partida"]
+            surface.blit(titulo, titulo.get_rect(center=spt(480, 112)))
+            linhas = [
+                "CONTROLES",
+                "A / D  -  Movimentar",
+                "W / ESPAÇO  -  Pular",
+                "Botão esquerdo  -  Espada",
+                "Botão direito  -  Shuriken",
+                "H - Habilidades durante a partida",
+            ]
             for i, linha in enumerate(linhas):
-                fonte = self.fonte_botao if i == 0 else self.fonte_subtitulo
-                texto = fonte.render(linha, True, (245, 235, 255))
-                surface.blit(texto, texto.get_rect(center=(480, 180 + i * 35)))
+                f = self.fonte_botao if i == 0 else self.fonte_subtitulo
+                texto = f.render(linha, True, (245, 235, 255))
+                surface.blit(texto, texto.get_rect(center=spt(480, 180 + i * 35)))
             self._desenhar_botao(
                 surface, "Sons: LIGADOS" if self.som_ativo else "Sons: DESLIGADOS", 415
             )
@@ -132,16 +144,28 @@ class MainMenu:
 
         if self.tela == "multiplayer":
             titulo = self.fonte_titulo.render("MULTIPLAYER LAN", True, (255, 224, 255))
-            surface.blit(titulo, titulo.get_rect(center=(480, 96)))
-            subtitulo = self.fonte_subtitulo.render("2 jogadores na mesma rede Wi-Fi ou cabo", True, (235, 220, 255))
-            surface.blit(subtitulo, subtitulo.get_rect(center=(480, 151)))
-            texto = self.fonte_subtitulo.render("IP do computador que vai criar a sala:", True, (240, 225, 250))
-            surface.blit(texto, texto.get_rect(center=(480, 194)))
-            campo = pygame.Rect(280, 213, 400, 46)
-            pygame.draw.rect(surface, (25, 20, 43), campo, border_radius=8)
-            pygame.draw.rect(surface, (236, 159, 255) if self.ip_ativo else (130, 95, 168), campo, 2, border_radius=8)
+            surface.blit(titulo, titulo.get_rect(center=spt(480, 96)))
+            subtitulo = self.fonte_subtitulo.render(
+                "2 jogadores na mesma rede Wi-Fi ou cabo", True, (235, 220, 255)
+            )
+            surface.blit(subtitulo, subtitulo.get_rect(center=spt(480, 151)))
+            texto = self.fonte_subtitulo.render(
+                "IP do computador que vai criar a sala:", True, (240, 225, 250)
+            )
+            surface.blit(texto, texto.get_rect(center=spt(480, 194)))
+
+            campo = srect(280, 213, 400, 46)
+            pygame.draw.rect(surface, (25, 20, 43), campo, border_radius=sval(8))
+            pygame.draw.rect(
+                surface,
+                (236, 159, 255) if self.ip_ativo else (130, 95, 168),
+                campo,
+                sval(2),
+                border_radius=sval(8),
+            )
             ip = self.fonte_botao.render(self.ip_servidor, True, (245, 235, 255))
-            surface.blit(ip, (campo.x + 14, campo.y + 10))
+            surface.blit(ip, (campo.x + sval(14), campo.y + sval(10)))
+
             self._desenhar_botao(surface, "Criar sala", 315)
             self._desenhar_botao(surface, "Entrar na sala", 368)
             self._desenhar_botao(surface, "Voltar", 433)
@@ -149,9 +173,11 @@ class MainMenu:
             return
 
         titulo = self.fonte_titulo.render("SHADOW REBIRTH", True, (255, 224, 255))
-        surface.blit(titulo, titulo.get_rect(center=(480, 105)))
-        subtitulo = self.fonte_subtitulo.render("UM NINJA. UMA LÂMINA. RUNS INFINITAS.", True, (235, 220, 255))
-        surface.blit(subtitulo, subtitulo.get_rect(center=(480, 151)))
+        surface.blit(titulo, titulo.get_rect(center=spt(480, 105)))
+        subtitulo = self.fonte_subtitulo.render(
+            "UM NINJA. UMA LÂMINA. RUNS INFINITAS.", True, (235, 220, 255)
+        )
+        surface.blit(subtitulo, subtitulo.get_rect(center=spt(480, 151)))
 
         self._desenhar_botao(surface, "Novo Jogo", 208)
         self._desenhar_botao(surface, "Continuar", 256, tem_save)
@@ -164,7 +190,8 @@ class MainMenu:
     def _desenhar_mensagem(self, surface):
         if self.mensagem_timer > 0 and self.mensagem:
             texto = self.fonte_pequena.render(self.mensagem, True, (255, 230, 170))
-            fundo = pygame.Surface((texto.get_width() + 28, 34), pygame.SRCALPHA)
+            fundo = pygame.Surface((texto.get_width() + sval(28), sval(34)), pygame.SRCALPHA)
             fundo.fill((10, 8, 20, 210))
-            surface.blit(fundo, fundo.get_rect(center=(480, 495)))
-            surface.blit(texto, texto.get_rect(center=(480, 495)))
+            centro = spt(480, 495)
+            surface.blit(fundo, fundo.get_rect(center=centro))
+            surface.blit(texto, texto.get_rect(center=centro))

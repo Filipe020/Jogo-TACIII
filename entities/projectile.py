@@ -5,6 +5,8 @@ import pygame
 
 from entities.entity import Entity
 from config import settings
+from systems.display import spt, sval
+
 
 class Projectile(Entity):
     def __init__(self, x, y, direction, speed, damage, from_player=True):
@@ -13,7 +15,7 @@ class Projectile(Entity):
         self.damage = damage
         self.from_player = from_player
         self.facing = direction
-        self.lifetime = 2.0  #Segundos até desaparecer sozinho
+        self.lifetime = 2.0  # Segundos até desaparecer sozinho
         self.rotation = 0
 
     def update(self, dt):
@@ -25,7 +27,7 @@ class Projectile(Entity):
 
     def draw(self, surface, camera_x):
         cor = settings.COLOR_SHURIKEN if self.from_player else (230, 120, 120)
-        centro = (int(self.x - camera_x + self.width / 2), int(self.y + self.height / 2))
-        raio = self.width // 2
+        centro = spt(self.x - camera_x + self.width / 2, self.y + self.height / 2)
+        raio = sval(self.width // 2)
         pygame.draw.circle(surface, cor, centro, raio)
-        pygame.draw.circle(surface, (20, 20, 30), centro, raio, 1)
+        pygame.draw.circle(surface, (20, 20, 30), centro, raio, sval(1))

@@ -137,6 +137,7 @@ class Player(Entity):
         return combat.calculate_damage(self.sword.dano_base, self.mult_dano_espada)
 
     #---Atualização---
+    #---Atualização---
     def update(self, dt, platforms, level_bounds):
         self.sword.atualizar(dt)
         self.shuriken_weapon.atualizar(dt)
@@ -152,17 +153,13 @@ class Player(Entity):
                 self.shuriken_regen_timer = 0.0
                 self.shurikens += 1
 
-        # Plataformas elevadas são atravessáveis por baixo e pelas laterais;
-        # só o pouso sobre a superfície bloqueia o movimento.
         self.x = physics.integrate_position(self.x, self.vx, dt)
+        collision.resolve_horizontal(self, platforms)
         collision.clamp_to_bounds(self, level_bounds[0], level_bounds[1])
 
-        # Guarda a altura anterior dos pés para detectar pousos mesmo quando
-        # um frame cruza a superfície inteira (sem travar ao subir por baixo).
-        previous_bottom = self.y + self.height
         self.vy = physics.apply_gravity(self.vy, dt)
         self.y = physics.integrate_position(self.y, self.vy, dt)
-        collision.resolve_vertical_one_way(self, platforms, previous_bottom)
+        collision.resolve_vertical(self, platforms)
 
         for proj in self.projectiles:
             proj.update(dt)

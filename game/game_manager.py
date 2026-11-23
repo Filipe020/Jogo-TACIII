@@ -26,6 +26,23 @@ from config import settings
 
 class GameManager:
     def __init__(self, screen):
+
+        pasta_plat = os.path.join(settings.BASE_DIR, "assets", "sprites", "platform")
+        self.platform_img = None
+        if os.path.isdir(pasta_plat):
+            arquivos = [
+                f for f in os.listdir(pasta_plat)
+                if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+            ]
+            if arquivos:
+                caminho_plat = os.path.join(pasta_plat, arquivos[0])
+                img = pygame.image.load(caminho_plat).convert_alpha()
+                cor_fundo = img.get_at((0, 0))
+                img.set_colorkey(cor_fundo)
+                rect_util = img.get_bounding_rect()
+                if rect_util.width > 0 and rect_util.height > 0:
+                    img = img.subsurface(rect_util).copy()
+                self.platform_img = img
         self.screen = screen
         self.state = GameState.MENU
 
@@ -727,12 +744,16 @@ class GameManager:
                 continue
             r = plat.copy()
             r.x -= cam
-            pygame.draw.rect(self.screen, settings.COLOR_PLATFORM, srect(r))
-            pygame.draw.rect(
-                self.screen,
-                settings.COLOR_PLATFORM_TOP,
-                srect(r.x, r.y, r.width, min(6, r.height)),
-            )
+            if self.platform_img:
+                scaled_plat = pygame.transform.scale(self.platform_img, sdim(r.width, r.height))
+                self.screen.blit(scaled_plat, spt(r.x, r.y))
+            else:
+                pygame.draw.rect(self.screen, settings.COLOR_PLATFORM, srect(r))
+                pygame.draw.rect(
+                    self.screen,
+                    settings.COLOR_PLATFORM_TOP,
+                    srect(r.x, r.y, r.width, min(6, r.height)),
+                )
 
         for inimigo in self.enemies:
             inimigo.draw(self.screen, cam)

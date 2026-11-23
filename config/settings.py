@@ -58,6 +58,10 @@ ENEMY_COLORS = {
     "resistente": (90, 90, 150),
     "distancia": (90, 170, 110),
     "chefe": (141, 57, 195),
+    "boss_basico": (164, 95, 95),
+    "boss_distancia": (115, 196, 145),
+    "boss_resistente": (192, 215, 242),
+    "boss_samurai": (187, 74, 112),
 }
 
 #---Controles---

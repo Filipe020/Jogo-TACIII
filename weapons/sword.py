@@ -5,7 +5,6 @@ import pygame
 from weapons.weapon import Weapon
 from systems.combat import calculate_damage
 
-
 class Sword(Weapon):
     def __init__(self, dano_base=18, alcance=40, cooldown=0.28):
         super().__init__(dano_base, alcance, cooldown)

@@ -1,6 +1,5 @@
 """Classe base para as armas do jogador."""
 
-
 class Weapon:
     def __init__(self, dano_base, alcance, cooldown):
         self.dano_base = dano_base

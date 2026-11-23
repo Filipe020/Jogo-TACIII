@@ -2,12 +2,10 @@
 / Roguelite (ver GDD completo)."""
 
 import sys
-
 import pygame
 
 from config import settings
 from game.game_manager import GameManager
-
 
 def main():
     pygame.init()
@@ -45,7 +43,6 @@ def main():
         gerenciador.lan.close()
     pygame.quit()
     sys.exit()
-
 
 if __name__ == "__main__":
     main()

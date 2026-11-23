@@ -18,9 +18,10 @@ def construir_plataformas():
         plataforma(2200, 260, 140),
         plataforma(2450, 340, 180),
         plataforma(2750, 300, 160),
-        plataforma(3050, 380, 220),
+        plataforma(3020, 380, 180),
+        plataforma(3260, 310, 150),
+        plataforma(3450, 250, 120),
     ]
-
 
 def limites_nivel():
     return (0, LARGURA_NIVEL)
